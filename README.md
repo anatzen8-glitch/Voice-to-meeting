@@ -5,7 +5,7 @@
 **Product Name:** VoiceMeet
 **Version:** 1.0 (MVP)
 **Last Updated:** January 2026
-**Status:** Definition Phase
+**Status:** Technical Decisions Complete - Ready for Implementation
 
 ---
 
@@ -109,6 +109,16 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 | **Length** | As brief as possible |
 | **Examples** | "Got it!", "When's the meeting?", "Done! You're all set." |
 
+#### 7. UI Design Principles
+| Principle | Implementation |
+|-----------|----------------|
+| **Conversational** | The app IS a conversation, not a form |
+| **Minimal copy** | As few words on screen as possible |
+| **UI language** | English |
+| **Voice input language** | Hebrew + English supported |
+| **Visual focus** | Microphone button, conversation transcript |
+| **No clutter** | No unnecessary buttons, menus, or options |
+
 ### Non-Functional Requirements
 
 | Requirement | Target |
@@ -204,30 +214,85 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 
 ---
 
-## Technical Approach (High-Level)
+## Technical Decisions
 
-### Recommended Stack
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| **Frontend** | HTML/CSS/JavaScript | Simple, no build required |
-| **Voice Input** | Web Speech API | Free, browser-native, good accuracy |
-| **NLP/Parsing** | OpenAI API or similar | Natural language understanding |
-| **Calendar** | Google Calendar API | Target integration |
-| **Hosting** | Vercel / Netlify | Free tier, easy deploy |
+### Confirmed Stack
+| Component | Technology | Rationale | Cost |
+|-----------|------------|-----------|------|
+| **Frontend** | HTML/CSS/JavaScript | Simple, no build required | Free |
+| **Speech-to-Text** | Web Speech API | Browser-native, supports Hebrew, good accuracy | Free |
+| **NLP/Understanding** | Gemini (Google AI Studio) | Strong Hebrew support, natural language understanding, existing account | Free tier (60 req/min) |
+| **Calendar** | Google Calendar API | Target integration, same Google ecosystem | Free |
+| **Hosting** | Vercel | Industry standard, auto-deploy from GitHub, professional | Free tier |
+
+### Why These Choices?
+
+**Web Speech API** over paid alternatives:
+- Free and built into browsers (Chrome, Edge, Safari)
+- Uses Google's speech recognition under the hood in Chrome
+- Supports Hebrew language
+- No API key or account setup required
+
+**Gemini** over OpenAI/Claude:
+- Strong Hebrew language support
+- Already have Google AI Studio access
+- Same ecosystem as Google Calendar
+- Generous free tier for MVP usage
+
+**Vercel** over alternatives:
+- Industry standard for web apps
+- Auto-deploys when we push code to GitHub
+- Free tier handles MVP traffic easily
+- Easy to add custom domain later
 
 ### Architecture (MVP)
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Browser    │────▶│  Voice API   │────▶│   Text       │
-│  (Mic Input) │     │ (Speech→Text)│     │  Processing  │
-└──────────────┘     └──────────────┘     └──────────────┘
-                                                  │
-                                                  ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Google     │◀────│   App Logic  │◀────│  NLP/Parser  │
-│  Calendar    │     │  (Create     │     │ (Extract     │
-│    API       │     │   Event)     │     │  Details)    │
-└──────────────┘     └──────────────┘     └──────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                           BROWSER                                │
+├──────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          │
+│  │  Microphone │───▶│ Web Speech  │───▶│    Text     │          │
+│  │   Input     │    │    API      │    │   Output    │          │
+│  └─────────────┘    └─────────────┘    └──────┬──────┘          │
+│                                               │                  │
+└───────────────────────────────────────────────┼──────────────────┘
+                                                │
+                                                ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                         BACKEND/APIs                             │
+├──────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          │
+│  │   Gemini    │───▶│  App Logic  │───▶│   Google    │          │
+│  │  (Parse &   │    │ (Validate & │    │  Calendar   │          │
+│  │ Understand) │    │  Confirm)   │    │    API      │          │
+│  └─────────────┘    └─────────────┘    └─────────────┘          │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+```
+1. User speaks → "פגישה עם דוד מחר בשלוש על התקציב"
+                         │
+                         ▼
+2. Web Speech API → "פגישה עם דוד מחר בשלוש על התקציב" (text)
+                         │
+                         ▼
+3. Gemini parses → {
+                     attendee: "דוד" (need email),
+                     date: "tomorrow",
+                     time: "15:00",
+                     title: "התקציב"
+                   }
+                         │
+                         ▼
+4. App Logic → Missing email, ask user
+                         │
+                         ▼
+5. Confirm → User says "yes"
+                         │
+                         ▼
+6. Google Calendar → Event created ✓
 ```
 
 ---
@@ -272,9 +337,11 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 
 | Question | Status |
 |----------|--------|
-| Which NLP service to use for parsing? | To be decided during implementation |
-| How to handle ambiguous dates ("next Friday")? | Use current week logic, confirm with user |
-| Hebrew voice recognition quality? | Test with Web Speech API |
+| Which NLP service to use for parsing? | ✅ Decided: Gemini (Google AI Studio) |
+| How to handle ambiguous dates ("next Friday")? | Let Gemini interpret, confirm with user |
+| Hebrew voice recognition quality? | ✅ Web Speech API supports Hebrew in Chrome |
+| Hosting platform? | ✅ Decided: Vercel |
+| UI language vs voice language? | ✅ Decided: English UI, Hebrew+English voice |
 
 ---
 
@@ -283,6 +350,7 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1 | Jan 2026 | Initial PRD draft |
+| 0.2 | Jan 2026 | Added technical decisions: Vercel, Web Speech API, Gemini, UI principles |
 
 ---
 
