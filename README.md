@@ -5,7 +5,7 @@
 **Product Name:** VoiceMeet
 **Version:** 1.0 (MVP)
 **Last Updated:** January 2026
-**Status:** Technical Decisions Complete - Ready for Implementation
+**Status:** PRD Complete - Ready to Build
 
 ---
 
@@ -297,6 +297,119 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 
 ---
 
+## Implementation Roadmap
+
+### Overview
+
+```
+Phase 1        Phase 2        Phase 3        Phase 4        Phase 5        Phase 6
+Foundation     Voice          Understanding  Conversation   Calendar       Polish
+   │              │              │              │              │              │
+   ▼              ▼              ▼              ▼              ▼              ▼
+┌──────┐      ┌──────┐      ┌──────┐      ┌──────┐      ┌──────┐      ┌──────┐
+│ See  │ ───▶ │ Hear │ ───▶ │Parse │ ───▶ │ Talk │ ───▶ │Create│ ───▶ │ Ship │
+│ app  │      │ voice│      │ text │      │ back │      │ event│      │  it  │
+└──────┘      └──────┘      └──────┘      └──────┘      └──────┘      └──────┘
+```
+
+### Phase 1: Foundation
+**Goal:** Get something visible running
+
+| Step | What | Output |
+|------|------|--------|
+| 1.1 | Create project files (HTML, CSS, JS) | Basic page structure |
+| 1.2 | Set up Vercel deployment | Live URL you can visit |
+| 1.3 | Design minimal UI | Microphone button + conversation area |
+
+**Milestone:** You can open a URL and see the app
+
+**You need to:** Create Vercel account at vercel.com
+
+---
+
+### Phase 2: Voice Input
+**Goal:** App can hear you
+
+| Step | What | Output |
+|------|------|--------|
+| 2.1 | Implement Web Speech API | Click mic → speak → see text |
+| 2.2 | Test Hebrew recognition | Verify "פגישה מחר" works |
+| 2.3 | Add visual feedback | Show when listening, show transcript |
+
+**Milestone:** You speak → text appears on screen
+
+---
+
+### Phase 3: Understanding
+**Goal:** App understands what you said
+
+| Step | What | Output |
+|------|------|--------|
+| 3.1 | Connect Gemini API | Send text, get response |
+| 3.2 | Create parsing prompt | Extract: title, date, time, attendee, duration |
+| 3.3 | Display parsed result | Show "I understood: meeting tomorrow at 3pm..." |
+
+**Milestone:** You speak → app shows what it understood
+
+**You need to:** Get API key from Google AI Studio
+
+---
+
+### Phase 4: Conversation
+**Goal:** App asks for missing info
+
+| Step | What | Output |
+|------|------|--------|
+| 4.1 | Detect missing fields | Know what to ask for |
+| 4.2 | Build conversation loop | Ask → listen → parse → repeat if needed |
+| 4.3 | Show confirmation | Display final meeting details, ask to confirm |
+
+**Milestone:** Full conversation from start to "Should I schedule this?"
+
+---
+
+### Phase 5: Google Calendar
+**Goal:** Actually create meetings
+
+| Step | What | Output |
+|------|------|--------|
+| 5.1 | Set up Google Cloud project | Get API credentials |
+| 5.2 | Implement OAuth login | "Sign in with Google" button |
+| 5.3 | Create calendar events | Meeting appears in your calendar |
+
+**Milestone:** End-to-end working app
+
+**You need to:** Create Google Cloud project (free, guided setup)
+
+---
+
+### Phase 6: Polish
+**Goal:** Ready for real use
+
+| Step | What | Output |
+|------|------|--------|
+| 6.1 | Error handling | Graceful failures, retry options |
+| 6.2 | Mobile responsiveness | Works on phone |
+| 6.3 | Final testing | Test various inputs, edge cases |
+
+**Milestone:** MVP complete
+
+---
+
+### Your Setup Checklist
+
+Before we start building, you'll need:
+
+| What | When | How |
+|------|------|-----|
+| **Vercel account** | Phase 1 | Free signup at vercel.com |
+| **Google AI Studio API key** | Phase 3 | From aistudio.google.com |
+| **Google Cloud project** | Phase 5 | Guided setup (free tier) |
+
+I'll walk you through each setup when we get there.
+
+---
+
 ## Success Metrics
 
 | Metric | Target (MVP) |
@@ -351,16 +464,12 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 |---------|------|---------|
 | 0.1 | Jan 2026 | Initial PRD draft |
 | 0.2 | Jan 2026 | Added technical decisions: Vercel, Web Speech API, Gemini, UI principles |
+| 0.3 | Jan 2026 | Added implementation roadmap with 6 phases |
 
 ---
 
 ## Next Steps
 
-1. ✅ Complete PRD (this document)
-2. 🔲 Set up project structure
-3. 🔲 Implement voice input (Web Speech API)
-4. 🔲 Build NLP parsing for meeting details
-5. 🔲 Create confirmation UI
-6. 🔲 Integrate Google Calendar API
-7. 🔲 Test end-to-end flow
-8. 🔲 Deploy MVP
+See **Implementation Roadmap** above for detailed phases.
+
+**Immediate next action:** Create Vercel account, then start Phase 1.
