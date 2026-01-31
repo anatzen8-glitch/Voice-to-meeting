@@ -412,12 +412,51 @@ I'll walk you through each setup when we get there.
 
 ## Success Metrics
 
-| Metric | Target (MVP) |
-|--------|--------------|
-| **Time to schedule** | < 45 seconds from open to confirmed |
-| **Voice recognition accuracy** | > 90% first-try success |
-| **Task completion rate** | > 80% of attempts result in scheduled meeting |
-| **User satisfaction** | Qualitative feedback positive |
+### Usage Metrics (Per Session)
+
+| Metric | Target (MVP) | How to Measure |
+|--------|--------------|----------------|
+| **Time to schedule** | < 45 seconds | Timer from app open to confirmed |
+| **Voice recognition accuracy** | > 90% first-try | Successful parses / total attempts |
+| **Task completion rate** | > 80% | Meetings created / sessions started |
+
+### Activation Metrics
+
+| Metric | Definition | Target |
+|--------|------------|--------|
+| **Activation rate** | Users who schedule at least 1 meeting | > 60% of signups |
+| **Time to first meeting** | Time from signup to first scheduled meeting | < 5 minutes |
+| **Onboarding completion** | Users who connect Google Calendar | > 70% of signups |
+
+### Retention Metrics
+
+| Metric | Definition | Target |
+|--------|------------|--------|
+| **Day 7 retention** | Users who return within 7 days of first use | > 30% |
+| **Day 30 retention** | Users who return within 30 days | > 20% |
+| **Weekly Active Users (WAU)** | Unique users per week | Track growth |
+| **Meetings per user per week** | Average meetings scheduled by active users | > 3 |
+
+### How We Define "Active User"
+A user is considered active if they:
+- Open the app AND
+- Complete at least one voice interaction (even if they don't schedule)
+
+### Retention Funnel
+
+```
+Signup → Connect Calendar → First Meeting → Return in 7 days → Regular Use
+  100%        70%               60%              30%              20%
+         (Onboarding)      (Activation)      (Retention)     (Habit)
+```
+
+### Qualitative Metrics
+
+| Metric | How to Gather |
+|--------|---------------|
+| **User satisfaction** | Post-scheduling feedback prompt |
+| **Feature requests** | In-app feedback button |
+| **Pain points** | User interviews (5-10 users/month) |
 
 ---
 
@@ -465,6 +504,7 @@ I'll walk you through each setup when we get there.
 | 0.1 | Jan 2026 | Initial PRD draft |
 | 0.2 | Jan 2026 | Added technical decisions: Vercel, Web Speech API, Gemini, UI principles |
 | 0.3 | Jan 2026 | Added implementation roadmap with 6 phases |
+| 0.4 | Jan 2026 | Added activation and retention KPIs, retention funnel |
 
 ---
 
