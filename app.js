@@ -1,5 +1,5 @@
-// VoiceMeet - Phase 2: Voice Input
-// Web Speech API implementation with Hebrew support
+// VoiceMeet - Phase 3: Understanding
+// Voice input + Gemini parsing
 
 const micButton = document.getElementById('mic-button');
 const status = document.getElementById('status');
@@ -21,9 +21,6 @@ if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-
-    // Support both Hebrew and English
-    // User can speak in either language
     recognition.lang = 'he-IL'; // Primary: Hebrew
 
     // Handle results
@@ -36,15 +33,10 @@ if (SpeechRecognition) {
         if (!event.results[0].isFinal) {
             status.textContent = transcript;
         } else {
-            // Final result - add to conversation
+            // Final result - add to conversation and parse
             addMessage(transcript, 'user');
-            status.textContent = 'Tap to speak';
-
-            // For now, echo back what we heard
-            // Phase 3 will send this to Gemini for parsing
-            setTimeout(() => {
-                addMessage(`I heard: "${transcript}"`, 'system');
-            }, 500);
+            status.textContent = 'Understanding...';
+            parseWithGemini(transcript);
         }
     };
 
@@ -52,7 +44,9 @@ if (SpeechRecognition) {
     recognition.onend = () => {
         isListening = false;
         micButton.classList.remove('listening');
-        status.textContent = 'Tap to speak';
+        if (status.textContent === 'Listening...') {
+            status.textContent = 'Tap to speak';
+        }
     };
 
     // Handle errors
@@ -71,6 +65,77 @@ if (SpeechRecognition) {
     };
 }
 
+// Parse text with Gemini API
+async function parseWithGemini(text) {
+    try {
+        const response = await fetch('/api/parse', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to parse');
+        }
+
+        const parsed = await response.json();
+        displayParsedResult(parsed);
+
+    } catch (error) {
+        console.error('Parse error:', error);
+        addMessage('Sorry, I had trouble understanding. Try again?', 'system');
+        status.textContent = 'Tap to speak';
+    }
+}
+
+// Display what Gemini understood
+function displayParsedResult(parsed) {
+    // Show the interpretation
+    if (parsed.raw_interpretation) {
+        addMessage(parsed.raw_interpretation, 'system');
+    }
+
+    // Build a summary of what we got
+    const details = [];
+
+    if (parsed.title) {
+        details.push(`Title: ${parsed.title}`);
+    }
+    if (parsed.date) {
+        details.push(`Date: ${parsed.date}`);
+    }
+    if (parsed.time) {
+        details.push(`Time: ${parsed.time}`);
+    }
+    if (parsed.duration) {
+        details.push(`Duration: ${parsed.duration} min`);
+    }
+    if (parsed.attendee) {
+        details.push(`With: ${parsed.attendee}`);
+    }
+    if (parsed.location) {
+        details.push(`Location: ${parsed.location}`);
+    }
+
+    if (details.length > 0) {
+        addMessage('I understood:\n' + details.join('\n'), 'system');
+    }
+
+    // Check what's missing
+    const missing = [];
+    if (!parsed.date) missing.push('date');
+    if (!parsed.time) missing.push('time');
+    if (!parsed.attendee) missing.push('attendee');
+
+    if (missing.length > 0) {
+        addMessage(`I still need: ${missing.join(', ')}`, 'system');
+    }
+
+    status.textContent = 'Tap to speak';
+}
+
 // Add a message to the conversation
 function addMessage(text, type = 'system') {
     const message = document.createElement('div');
@@ -85,13 +150,11 @@ micButton.addEventListener('click', () => {
     if (!recognition) return;
 
     if (isListening) {
-        // Stop listening
         recognition.stop();
         isListening = false;
         micButton.classList.remove('listening');
         status.textContent = 'Tap to speak';
     } else {
-        // Start listening
         try {
             recognition.start();
             isListening = true;
@@ -105,5 +168,4 @@ micButton.addEventListener('click', () => {
 });
 
 // Log that app is ready
-console.log('VoiceMeet loaded - Phase 2: Voice Input ready');
-console.log('Language set to Hebrew (he-IL)');
+console.log('VoiceMeet loaded - Phase 3: Understanding ready');
