@@ -1,7 +1,16 @@
 // Serverless function to parse meeting details using Gemini
 // Vercel will run this at /api/parse
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     // Only allow POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -16,6 +25,7 @@ export default async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
+        console.error('GEMINI_API_KEY not found in environment');
         return res.status(500).json({ error: 'API key not configured' });
     }
 
@@ -65,21 +75,23 @@ Respond ONLY with the JSON, no other text.`;
         );
 
         if (!response.ok) {
-            const error = await response.text();
-            console.error('Gemini API error:', error);
-            return res.status(500).json({ error: 'Failed to parse with AI' });
+            const errorText = await response.text();
+            console.error('Gemini API error:', response.status, errorText);
+            return res.status(500).json({ error: 'Failed to parse with AI', details: errorText });
         }
 
         const data = await response.json();
         const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!responseText) {
+            console.error('No response text from Gemini:', JSON.stringify(data));
             return res.status(500).json({ error: 'No response from AI' });
         }
 
         // Parse the JSON response
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+            console.error('Could not parse JSON from response:', responseText);
             return res.status(500).json({ error: 'Invalid AI response format' });
         }
 
@@ -87,7 +99,7 @@ Respond ONLY with the JSON, no other text.`;
         return res.status(200).json(parsed);
 
     } catch (error) {
-        console.error('Parse error:', error);
-        return res.status(500).json({ error: 'Failed to process request' });
+        console.error('Parse error:', error.message);
+        return res.status(500).json({ error: 'Failed to process request', details: error.message });
     }
-}
+};
