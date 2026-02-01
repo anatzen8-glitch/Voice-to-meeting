@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { text } = req.body;
+    const { text, draft } = req.body;
 
     if (!text) {
         return res.status(400).json({ error: 'No text provided' });
@@ -28,6 +28,10 @@ module.exports = async function handler(req, res) {
         console.error('GEMINI_API_KEY not found in environment');
         return res.status(500).json({ error: 'API key not configured' });
     }
+
+    const draftLine = draft && (draft.date || draft.time || draft.attendee || draft.title || draft.duration || draft.location)
+        ? `Current meeting draft so far: ${JSON.stringify(draft)}. Only fill in fields the user is adding or changing in this turn; use null for anything not mentioned now.\n\n`
+        : '';
 
     const prompt = `You are a meeting scheduling assistant. Extract meeting details from the user's speech.
 The user may speak in Hebrew or English. Always respond in this exact JSON format:
@@ -50,7 +54,7 @@ Important rules:
 - "מחר" means "tomorrow", "היום" means "today"
 - Keep raw_interpretation friendly and brief
 
-User said: "${text}"
+${draftLine}User said: "${text}"
 
 Respond ONLY with the JSON, no other text.`;
 

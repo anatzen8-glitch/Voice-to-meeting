@@ -127,3 +127,17 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 - **Next:** Part A (deploy) → then Part B (conversation) → Part C (Calendar) → Part D (polish).
 
 Start with **Part A** to get the app active; then do B → C → D in order for the full MVP.
+
+---
+
+## Next feature: Voice discussion
+
+**Goal:** The app speaks back to the user (e.g. “When would you like the meeting?” or “Got it! Should I schedule?”) instead of only showing text.
+
+| Step | What to do |
+|------|------------|
+| 1 | Use the **Web Speech API** `SpeechSynthesis` (or a TTS service) to speak the system messages. |
+| 2 | Optionally: detect “yes” / “confirm” in voice and trigger “schedule” when the draft is complete. |
+| 3 | Keep written responses on screen as well (accessibility and clarity). |
+
+**Note:** Written responses are kept for now; voice discussion is the next enhancement.

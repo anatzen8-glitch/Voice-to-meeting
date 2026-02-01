@@ -1,9 +1,19 @@
-// VoiceMeet - Phase 3: Understanding
-// Voice input + Gemini parsing
+// VoiceMeet - Phase 3: Understanding + conversation context
+// Voice input + Gemini parsing; keeps a meeting draft across turns
 
 const micButton = document.getElementById('mic-button');
 const status = document.getElementById('status');
 const conversation = document.getElementById('conversation');
+
+// Meeting draft: we merge each parse into this so we don't lose context
+let meetingDraft = {
+    title: null,
+    date: null,
+    time: null,
+    duration: null,
+    attendee: null,
+    location: null
+};
 
 // Check for Web Speech API support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -65,7 +75,7 @@ if (SpeechRecognition) {
     };
 }
 
-// Parse text with Gemini API
+// Parse text with Gemini API (optionally send current draft for context)
 async function parseWithGemini(text) {
     try {
         const response = await fetch('/api/parse', {
@@ -73,7 +83,7 @@ async function parseWithGemini(text) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, draft: meetingDraft })
         });
 
         if (!response.ok) {
@@ -90,47 +100,46 @@ async function parseWithGemini(text) {
     }
 }
 
-// Display what Gemini understood
+// Merge parsed result into draft (only set fields that are provided)
+function mergeIntoDraft(parsed) {
+    if (parsed.title != null && parsed.title !== '') meetingDraft.title = parsed.title;
+    if (parsed.date != null && parsed.date !== '') meetingDraft.date = parsed.date;
+    if (parsed.time != null && parsed.time !== '') meetingDraft.time = parsed.time;
+    if (parsed.duration != null && parsed.duration !== '') meetingDraft.duration = parsed.duration;
+    if (parsed.attendee != null && parsed.attendee !== '') meetingDraft.attendee = parsed.attendee;
+    if (parsed.location != null && parsed.location !== '') meetingDraft.location = parsed.location;
+}
+
+// Display what we understood and update draft (keeps context across turns)
 function displayParsedResult(parsed) {
-    // Show the interpretation
     if (parsed.raw_interpretation) {
         addMessage(parsed.raw_interpretation, 'system');
     }
 
-    // Build a summary of what we got
-    const details = [];
+    mergeIntoDraft(parsed);
 
-    if (parsed.title) {
-        details.push(`Title: ${parsed.title}`);
-    }
-    if (parsed.date) {
-        details.push(`Date: ${parsed.date}`);
-    }
-    if (parsed.time) {
-        details.push(`Time: ${parsed.time}`);
-    }
-    if (parsed.duration) {
-        details.push(`Duration: ${parsed.duration} min`);
-    }
-    if (parsed.attendee) {
-        details.push(`With: ${parsed.attendee}`);
-    }
-    if (parsed.location) {
-        details.push(`Location: ${parsed.location}`);
-    }
+    // Show summary from the draft (so we don't lose context)
+    const details = [];
+    if (meetingDraft.title) details.push(`Title: ${meetingDraft.title}`);
+    if (meetingDraft.date) details.push(`Date: ${meetingDraft.date}`);
+    if (meetingDraft.time) details.push(`Time: ${meetingDraft.time}`);
+    if (meetingDraft.duration) details.push(`Duration: ${meetingDraft.duration} min`);
+    if (meetingDraft.attendee) details.push(`With: ${meetingDraft.attendee}`);
+    if (meetingDraft.location) details.push(`Location: ${meetingDraft.location}`);
 
     if (details.length > 0) {
         addMessage('I understood:\n' + details.join('\n'), 'system');
     }
 
-    // Check what's missing
     const missing = [];
-    if (!parsed.date) missing.push('date');
-    if (!parsed.time) missing.push('time');
-    if (!parsed.attendee) missing.push('attendee');
+    if (!meetingDraft.date) missing.push('date');
+    if (!meetingDraft.time) missing.push('time');
+    if (!meetingDraft.attendee) missing.push('attendee');
 
     if (missing.length > 0) {
         addMessage(`I still need: ${missing.join(', ')}`, 'system');
+    } else {
+        addMessage('Got it! Here\'s what I have. Should I schedule this? (Coming soon: calendar)', 'system');
     }
 
     status.textContent = 'Tap to speak';
