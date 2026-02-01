@@ -181,6 +181,15 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 
 ## Future Scope (v2.0+)
 
+### Phase 1 (post-MVP) — First priority: Voice discussion
+| Feature | Description |
+|---------|-------------|
+| **Voice replies (TTS)** | App speaks back to the user (e.g. "When would you like the meeting?", "Got it! Should I schedule?") using Web Speech API SpeechSynthesis |
+| **Voice confirmation** | Detect "yes" / "confirm" / "schedule it" in voice to trigger calendar create |
+| **Written + spoken** | Keep all responses on screen for accessibility; voice is additive |
+
+**Note:** MVP stays calendar-first (Google Calendar integration). Voice discussion is the first priority once MVP is complete.
+
 ### Phase 2: Enhanced Contacts
 | Feature | Description |
 |---------|-------------|
