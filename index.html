@@ -10,6 +10,10 @@
     <div class="container">
         <header>
             <h1>VoiceMeet</h1>
+            <div id="google-signin-wrap">
+                <div id="google-signin-button"></div>
+                <span id="signin-status"></span>
+            </div>
         </header>
 
         <main>
@@ -27,9 +31,13 @@
             </button>
 
             <p id="status">Tap to speak</p>
+            <div id="schedule-wrap" class="hidden">
+                <button type="button" id="schedule-button">Schedule it</button>
+            </div>
         </main>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="app.js"></script>
 </body>
 </html>

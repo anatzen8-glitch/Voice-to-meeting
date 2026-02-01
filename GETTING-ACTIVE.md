@@ -72,16 +72,14 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 2. If asked, configure **OAuth consent screen**: External, add your email as tester.
 3. Application type: **Web application**.
 4. Add **Authorized JavaScript origins**:  
-   - `https://your-app.vercel.app`  
+   - `https://your-app.vercel.app` (your real Vercel URL)  
    - `http://localhost:3000` (for local dev)
-5. Add **Authorized redirect URIs**:  
-   - `https://your-app.vercel.app` (or `/api/auth/callback` if you use a callback route)  
-   - `http://localhost:3000` (for local)
-6. Create and copy **Client ID** and **Client Secret**.
+5. **Authorized redirect URIs** can be left empty for GIS token flow (no redirect).
+6. Create and copy **Client ID**. Add it in Vercel as **`GOOGLE_CLIENT_ID`** (Settings → Environment Variables).
 
-### Step C3: Backend auth and calendar
+### Step C3: Backend and env
 
-1. Add a serverless route (e.g. `/api/auth/callback`) to exchange the OAuth code for tokens; store **refresh token** securely (e.g. Vercel env or a small DB).
+1. **`/api/config`** returns `GOOGLE_CLIENT_ID` for frontend Sign-In. **`/api/calendar-create`** accepts the user's access token + event details and creates the event via Google Calendar API.
 2. Add an API route (e.g. `/api/calendar/create`) that:
    - Uses the user’s stored token to call Google Calendar API.
    - Accepts: title, date, time, duration, attendee(s), optional location.
@@ -117,7 +115,7 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 | **GEMINI_API_KEY** | Part A | Vercel project → Environment Variables |
 | **Google Cloud project** | Part C | console.cloud.google.com |
 | **Calendar API + OAuth client** | Part C | Same project → APIs & Services |
-| **GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET** | Part C | Vercel Environment Variables |
+| **GOOGLE_CLIENT_ID** | Part C | Vercel Environment Variables (OAuth client ID from Google Cloud) |
 
 ---
 

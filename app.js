@@ -1,9 +1,13 @@
-// VoiceMeet - Phase 3: Understanding + conversation context
-// Voice input + Gemini parsing; keeps a meeting draft across turns
+// VoiceMeet - Phase 3 + Calendar (MVP)
+// Voice input + Gemini parsing + Google Calendar create
 
 const micButton = document.getElementById('mic-button');
 const status = document.getElementById('status');
 const conversation = document.getElementById('conversation');
+const scheduleWrap = document.getElementById('schedule-wrap');
+const scheduleButton = document.getElementById('schedule-button');
+const signinStatus = document.getElementById('signin-status');
+const googleSigninButton = document.getElementById('google-signin-button');
 
 // Meeting draft: we merge each parse into this so we don't lose context
 let meetingDraft = {
@@ -14,6 +18,11 @@ let meetingDraft = {
     attendee: null,
     location: null
 };
+
+// Google Sign-In: access token for Calendar API
+let accessToken = null;
+let tokenClient = null;
+let googleClientId = '';
 
 // Check for Web Speech API support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -138,11 +147,144 @@ function displayParsedResult(parsed) {
 
     if (missing.length > 0) {
         addMessage(`I still need: ${missing.join(', ')}`, 'system');
+        if (scheduleWrap) scheduleWrap.classList.add('hidden');
     } else {
-        addMessage('Got it! Here\'s what I have. Should I schedule this? (Coming soon: calendar)', 'system');
+        addMessage('Got it! Here\'s what I have. Should I schedule this?', 'system');
+        if (scheduleWrap) scheduleWrap.classList.remove('hidden');
     }
 
     status.textContent = 'Tap to speak';
+}
+
+// Convert draft date/time/duration to start_iso and end_iso (user timezone)
+function draftToStartEnd() {
+    const dateStr = (meetingDraft.date || '').toLowerCase().trim();
+    const timeStr = (meetingDraft.time || '').toString().trim();
+    const duration = Math.max(15, parseInt(meetingDraft.duration, 10) || 30);
+
+    const now = new Date();
+    let start = new Date(now);
+
+    if (dateStr === 'tomorrow' || dateStr === 'מחר') {
+        start.setDate(start.getDate() + 1);
+    } else if (dateStr !== 'today' && dateStr !== 'היום') {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+            start = parsed;
+        }
+    }
+
+    const timeMatch = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i) || timeStr.match(/(\d{1,2})/);
+    if (timeMatch) {
+        let h = parseInt(timeMatch[1], 10);
+        const m = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+        if (timeMatch[3]) {
+            if (timeMatch[3].toLowerCase() === 'pm' && h < 12) h += 12;
+            if (timeMatch[3].toLowerCase() === 'am' && h === 12) h = 0;
+        } else if (h <= 12 && !timeStr.includes(':') && timeStr.toLowerCase().includes('pm')) {
+            h += 12;
+        } else if (h < 7 && !timeStr.includes(':')) {
+            h += 12;
+        }
+        start.setHours(h, m, 0, 0);
+    }
+
+    const end = new Date(start.getTime() + duration * 60 * 1000);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const fmt = (d) => {
+        const y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, '0');
+        const D = String(d.getDate()).padStart(2, '0');
+        const H = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        const offset = -d.getTimezoneOffset();
+        const sign = offset >= 0 ? '+' : '-';
+        const oh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+        const om = String(Math.abs(offset) % 60).padStart(2, '0');
+        return `${y}-${M}-${D}T${H}:${min}:${s}${sign}${oh}:${om}`;
+    };
+    return { start_iso: fmt(start), end_iso: fmt(end) };
+}
+
+// Create event on Google Calendar
+async function createCalendarEvent() {
+    if (!accessToken) {
+        addMessage('Please sign in with Google first.', 'system');
+        return;
+    }
+    const times = draftToStartEnd();
+    if (!times) {
+        addMessage('I couldn\'t figure out the date or time. Try saying the date and time again.', 'system');
+        return;
+    }
+    scheduleButton.disabled = true;
+    status.textContent = 'Scheduling...';
+    try {
+        const res = await fetch('/api/calendar-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                accessToken,
+                title: meetingDraft.title || 'VoiceMeet',
+                start_iso: times.start_iso,
+                end_iso: times.end_iso,
+                attendee: meetingDraft.attendee || null,
+                location: meetingDraft.location || null
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            addMessage(data.error || 'Failed to create event. Try again.', 'system');
+            return;
+        }
+        addMessage('Done! Meeting scheduled.', 'system');
+        meetingDraft = { title: null, date: null, time: null, duration: null, attendee: null, location: null };
+        scheduleWrap.classList.add('hidden');
+    } catch (e) {
+        addMessage('Something went wrong. Try again.', 'system');
+    } finally {
+        scheduleButton.disabled = false;
+        status.textContent = 'Tap to speak';
+    }
+}
+
+// Initialize Google Sign-In when config and GSI are ready
+async function initGoogleSignIn() {
+    try {
+        const configRes = await fetch('/api/config');
+        const config = await configRes.json();
+        googleClientId = config.googleClientId || '';
+        if (!googleClientId) {
+            signinStatus.textContent = '(Calendar: set GOOGLE_CLIENT_ID in Vercel)';
+            return;
+        }
+    } catch (e) {
+        signinStatus.textContent = '';
+        return;
+    }
+
+    function tryInit() {
+        if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+            setTimeout(tryInit, 100);
+            return;
+        }
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+            callback: (tokenResponse) => {
+                accessToken = tokenResponse.access_token;
+                signinStatus.textContent = 'Signed in';
+                if (googleSigninButton) googleSigninButton.textContent = 'Signed in';
+            }
+        });
+        if (googleSigninButton) {
+            googleSigninButton.textContent = 'Sign in with Google';
+            googleSigninButton.style.cssText = 'padding:8px 16px;border-radius:8px;border:1px solid #dadce0;background:#fff;cursor:pointer;font-size:14px;';
+            googleSigninButton.onclick = () => tokenClient.requestAccessToken({ prompt: '' });
+        }
+    }
+    tryInit();
 }
 
 // Add a message to the conversation
@@ -153,6 +295,17 @@ function addMessage(text, type = 'system') {
     conversation.appendChild(message);
     conversation.scrollTop = conversation.scrollHeight;
 }
+
+// Schedule button: create calendar event
+if (scheduleButton) {
+    scheduleButton.addEventListener('click', createCalendarEvent);
+}
+
+// Load Google Sign-In config and init when ready
+initGoogleSignIn();
+
+// Hide schedule area until draft is complete
+if (scheduleWrap) scheduleWrap.classList.add('hidden');
 
 // Handle mic button click
 micButton.addEventListener('click', () => {

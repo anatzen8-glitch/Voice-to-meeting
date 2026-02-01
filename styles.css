@@ -34,6 +34,43 @@ header h1 {
     color: #333;
 }
 
+#google-signin-wrap {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#signin-status {
+    font-size: 12px;
+    color: #666;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#schedule-wrap {
+    margin-top: 12px;
+}
+
+#schedule-button {
+    padding: 12px 24px;
+    border-radius: 24px;
+    border: none;
+    background: #34a853;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#schedule-button:hover {
+    background: #2d8e47;
+}
+
 main {
     flex: 1;
     display: flex;
