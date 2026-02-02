@@ -44,7 +44,7 @@ The user may speak in Hebrew or English. Always respond in this exact JSON forma
     "date": "the date mentioned in format 'YYYY-MM-DD' or relative like 'tomorrow', 'today' (e.g., '2026-02-20', 'tomorrow', 'מחר') or null",
     "time": "the time mentioned in 24-hour format or 12-hour with am/pm (e.g., '18:00', '6pm', '6:00 בערב') or null",
     "duration": "duration in minutes as number (e.g., 30, 60) or null",
-    "attendee": "email address if mentioned, or name if mentioned, or null",
+    "attendee": "email address if mentioned (convert 'at' to '@', e.g., 'david at gmail.com' -> 'david@gmail.com'), or name if mentioned, or null if no attendees",
     "location": "location if mentioned or null",
     "raw_interpretation": "brief summary of what you understood in the same language the user spoke"
 }
@@ -52,8 +52,10 @@ The user may speak in Hebrew or English. Always respond in this exact JSON forma
 Important rules:
 - If the user says "חצי שעה" or "half hour", duration is 30
 - If the user says "שעה" or "hour", duration is 60
-- Extract email addresses exactly as spoken
+- Extract email addresses: if user says "david at gmail.com" or "david@gmail.com", convert to proper email format "david@gmail.com" (replace "at" with "@")
+- Emails are always in English/Latin characters - normalize them properly
 - For names without email, just capture the name
+- Attendees are optional - if user doesn't mention any, return null
 - "מחר" means "tomorrow", "היום" means "today"
 - For dates: Convert Hebrew dates to YYYY-MM-DD format (e.g., "20 לפברואר 2026" -> "2026-02-20")
 - For times: Convert Hebrew times to 24-hour format or include am/pm (e.g., "6 בערב" -> "18:00" or "6pm")

@@ -130,7 +130,11 @@ function mergeIntoDraft(parsed) {
         meetingDraft.time = parsed.time;
     }
     if (parsed.duration != null && parsed.duration !== '') meetingDraft.duration = parsed.duration;
-    if (parsed.attendee != null && parsed.attendee !== '') meetingDraft.attendee = parsed.attendee;
+    if (parsed.attendee != null && parsed.attendee !== '') {
+        // Normalize email: "david at gmail.com" -> "david@gmail.com"
+        let normalizedAttendee = parsed.attendee.replace(/\s+at\s+/gi, '@').replace(/\s+/g, '');
+        meetingDraft.attendee = normalizedAttendee;
+    }
     if (parsed.location != null && parsed.location !== '') meetingDraft.location = parsed.location;
     console.log('Draft after merge:', meetingDraft);
 }
@@ -149,7 +153,15 @@ function displayParsedResult(parsed) {
     if (meetingDraft.date) details.push(`Date: ${meetingDraft.date}`);
     if (meetingDraft.time) details.push(`Time: ${meetingDraft.time}`);
     if (meetingDraft.duration) details.push(`Duration: ${meetingDraft.duration} min`);
-    if (meetingDraft.attendee) details.push(`With: ${meetingDraft.attendee}`);
+    if (meetingDraft.attendee) {
+        // Format email nicely: "david at gmail.com" -> "david@gmail.com" or show as "Attendee: email"
+        const attendeeStr = meetingDraft.attendee.replace(/\s+at\s+/gi, '@').replace(/\s+/g, '');
+        if (attendeeStr.includes('@')) {
+            details.push(`Attendee: ${attendeeStr}`);
+        } else {
+            details.push(`Attendee: ${meetingDraft.attendee}`);
+        }
+    }
     if (meetingDraft.location) details.push(`Location: ${meetingDraft.location}`);
 
     if (details.length > 0) {
@@ -159,13 +171,18 @@ function displayParsedResult(parsed) {
     const missing = [];
     if (!meetingDraft.date) missing.push('date');
     if (!meetingDraft.time) missing.push('time');
-    if (!meetingDraft.attendee) missing.push('attendee');
+    // Attendee is optional - don't require it
 
     if (missing.length > 0) {
         addMessage(`I still need: ${missing.join(', ')}`, 'system');
         if (scheduleWrap) scheduleWrap.classList.add('hidden');
     } else {
-        addMessage('Got it! Here\'s what I have. Should I schedule this?', 'system');
+        // If no attendee, optionally ask (but don't require)
+        if (!meetingDraft.attendee) {
+            addMessage('Got it! Here\'s what I have. Any attendees to invite?', 'system');
+        } else {
+            addMessage('Got it! Here\'s what I have. Should I schedule this?', 'system');
+        }
         if (scheduleWrap) scheduleWrap.classList.remove('hidden');
     }
 
