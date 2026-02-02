@@ -32,8 +32,9 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 ### Step A3: Test the live app
 
 1. Open your Vercel URL in **Chrome** (for best voice support).
-2. Allow microphone when prompted.
-3. Tap the mic, say something like: *“Meeting with john@test.com tomorrow at 3pm”*.
+2. **Language:** Default is Hebrew (עברית). Use **עברית / English** in the header to switch; conversation and UI follow the selected language (emails in English format).
+3. Allow microphone when prompted.
+4. Tap the mic, say something like: *“Meeting with john@test.com tomorrow at 3pm”*.
 4. You should see your message and the app’s “I understood: …” plus “I still need: …” if something is missing.
 
 **Checkpoint:** App is **active** — voice input and Gemini parsing work in production.
@@ -48,8 +49,8 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 |------|------------|--------|
 | B1 | In the frontend, keep **state** for the current “draft” meeting (title, date, time, duration, attendee, location). | One object holds everything parsed so far. |
 | B2 | After each parse, **merge** new fields into the draft; **don’t** replace the whole thing. | Multiple voice turns fill in missing fields. |
-| B3 | If required fields are missing (date, time, attendee), **ask once** for the next missing item (e.g. “When should it be?” or “Who should I invite?”). | One follow-up question per turn. |
-| B4 | When date, time, and attendee are all present, **show confirmation**: “Here’s what I have: … Should I schedule this?” | User sees full summary. |
+| B3 | If required fields are missing (date, time), **ask once** for the next missing item (e.g. “מתי?” / “When?”). **Attendees are optional** — ask “להוסיף משתתפים או משתתפות?” but don’t require. | One follow-up question per turn. |
+| B4 | When date and time are present, **show confirmation**: “אז אילו הפרטים שיש לי … לזמן?” / “Got it! … Should I schedule?” | User sees full summary. |
 | B5 | **Listen for confirmation** (“yes”, “confirm”, “schedule it”) and then call the calendar API (Phase 5). If you don’t have calendar yet, show “Schedule it” and a “Coming soon” or mock success message. | Ready to plug in real calendar in Part C. |
 
 **Checkpoint:** Full conversation from “What do you have?” to “Should I schedule this?” works.
@@ -121,10 +122,10 @@ This guide gets VoiceMeet **live** and then completes the MVP so users can sched
 
 ## Current status
 
-- **Done:** Phases 1–3 (UI, voice input, Gemini parsing).  
-- **Next:** Part A (deploy) → then Part B (conversation) → Part C (Calendar) → Part D (polish).
+- **Done:** Phases 1–6 — UI, voice input, Gemini parsing, conversation, Google Calendar (Sign in with Google, “יש אישור לזימון?” / Schedule it), Hebrew/English language switch (default Hebrew, gender-neutral copy), attendees optional, email normalization (at→@), Gemini quota handling (friendly 429 message), deployed on Vercel.
+- **Next:** Part D (polish) as needed; then Future Scope (e.g. voice discussion / TTS).
 
-Start with **Part A** to get the app active; then do B → C → D in order for the full MVP.
+If you’re setting up from scratch, follow **Part A** → **Part C** (and **SETUP-FROM-SCRATCH.md** for env vars and OAuth). For “Resource exhausted” / 429, see SETUP-FROM-SCRATCH.md Troubleshooting.
 
 ---
 

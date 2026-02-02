@@ -43,6 +43,7 @@ const translations = {
         scheduleIt: 'יש אישור לזימון?',
         pleaseSignIn: 'נדרשת התחברות עם Google קודם.',
         errorUnderstanding: 'לא הבנתי אפשר שוב',
+        errorQuota: 'המכסה זמנית מלאה. נסה שוב בעוד דקה.',
         noSpeech: 'לא זוהה דיבור. לחיצה לנסות שוב.',
         micDenied: 'גישה למיקרופון נדחתה. נדרש לאפשר גישה למיקרופון.',
         errorOccurred: 'אירעה שגיאה. לחיצה לנסות שוב.',
@@ -71,6 +72,7 @@ const translations = {
         scheduleIt: 'Schedule it',
         pleaseSignIn: 'Please sign in with Google first.',
         errorUnderstanding: 'Sorry, I had trouble understanding. Try again?',
+        errorQuota: 'API quota used for now. Try again in a minute.',
         noSpeech: 'No speech detected. Tap to try again.',
         micDenied: 'Microphone access denied. Please allow mic access.',
         errorOccurred: 'Error occurred. Tap to try again.',
@@ -170,7 +172,9 @@ async function parseWithGemini(text) {
             }
             console.error('Parse API error:', response.status, JSON.stringify(errorData, null, 2));
             const errorMsg = errorData.error || errorData.details || `HTTP ${response.status} error`;
-            addMessage(currentLanguage === 'he' ? `שגיאה: ${errorMsg}` : `Error: ${errorMsg}`, 'system');
+            const isQuota = typeof errorMsg === 'string' && (errorMsg.includes('Resource exhausted') || errorMsg.includes('429'));
+            const msg = isQuota ? t('errorQuota') : (currentLanguage === 'he' ? `שגיאה: ${errorMsg}` : `Error: ${errorMsg}`);
+            addMessage(msg, 'system');
             status.textContent = t('tapToSpeak');
             return;
         }

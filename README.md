@@ -4,8 +4,8 @@
 
 **Product Name:** VoiceMeet
 **Version:** 1.0 (MVP)
-**Last Updated:** January 2026
-**Status:** PRD Complete - Ready to Build
+**Last Updated:** February 2026
+**Status:** MVP Live — Hebrew/English, Calendar, Deployed
 
 ---
 
@@ -61,12 +61,12 @@ This process is slow, requires hands, and interrupts their flow.
 | **Example** | "Schedule a meeting with john@acme.com tomorrow at 3pm about the new project proposal" |
 
 #### 2. Conversational Guidance
-If the user doesn't provide all required information, the app will ask follow-up questions via voice:
+If the user doesn't provide all required information, the app asks follow-up questions (natural language, not a fixed "I still need:" list):
 
 | Missing Info | App Response |
 |--------------|--------------|
-| Date/Time | "When would you like to schedule this meeting?" |
-| Attendees | "Who should I invite? Please provide their email." |
+| Date/Time | Asks when (e.g. "מתי?" / "When?") |
+| Attendees | Optional — "להוסיף משתתפים או משתתפות?" / "Any attendees to invite?" |
 | Duration (optional) | Uses default (30 min) - no prompt needed |
 | Title (optional) | Auto-generates - no prompt needed |
 
@@ -77,7 +77,7 @@ If the user doesn't provide all required information, the app will ask follow-up
 | **Title** | No | If not provided → "Meeting with [attendee name/email]" |
 | **Date & Time** | Yes | Must be provided by user |
 | **Duration** | No | Default: 30 minutes |
-| **Attendees** | Yes | Email address required (MVP) |
+| **Attendees** | No | Optional; email normalized ("david at gmail.com" → david@gmail.com) |
 | **Location** | No | Ask only: "Is there a specific location?" - skip if none |
 
 #### 4. Confirmation Flow
@@ -114,9 +114,10 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 |-----------|----------------|
 | **Conversational** | The app IS a conversation, not a form |
 | **Minimal copy** | As few words on screen as possible |
-| **UI language** | English |
-| **Voice input language** | Hebrew + English supported |
-| **Visual focus** | Microphone button, conversation transcript |
+| **UI language** | Hebrew default; language switch (עברית / English) for full UI + conversation in chosen language |
+| **Voice input language** | Hebrew or English (matches selected UI language); emails always in English format |
+| **Copy** | Gender-neutral Hebrew where applicable (e.g. "לקביעת פגישה", "לחיצה לדיבור") |
+| **Visual focus** | Microphone button, conversation transcript, language toggle |
 | **No clutter** | No unnecessary buttons, menus, or options |
 
 ### Non-Functional Requirements
@@ -230,7 +231,7 @@ User confirms with "Yes" / "Confirm" / "Schedule it"
 |-----------|------------|-----------|------|
 | **Frontend** | HTML/CSS/JavaScript | Simple, no build required | Free |
 | **Speech-to-Text** | Web Speech API | Browser-native, supports Hebrew, good accuracy | Free |
-| **NLP/Understanding** | Gemini (Google AI Studio) | Strong Hebrew support, natural language understanding, existing account | Free tier (60 req/min) |
+| **NLP/Understanding** | Gemini (Google AI Studio) | Strong Hebrew support, natural language understanding, existing account | Free tier (~15–20 req/min; quota resets; app shows friendly "try again in a minute" on 429) |
 | **Calendar** | Google Calendar API | Target integration, same Google ecosystem | Free |
 | **Hosting** | Vercel | Industry standard, auto-deploy from GitHub, professional | Free tier |
 
@@ -502,7 +503,7 @@ Signup → Connect Calendar → First Meeting → Return in 7 days → Regular U
 | How to handle ambiguous dates ("next Friday")? | Let Gemini interpret, confirm with user |
 | Hebrew voice recognition quality? | ✅ Web Speech API supports Hebrew in Chrome |
 | Hosting platform? | ✅ Decided: Vercel |
-| UI language vs voice language? | ✅ Decided: English UI, Hebrew+English voice |
+| UI language vs voice language? | ✅ Decided: Hebrew default UI, language switch (עברית / English); both user and system chat in chosen language; emails in English |
 
 ---
 
@@ -514,6 +515,7 @@ Signup → Connect Calendar → First Meeting → Return in 7 days → Regular U
 | 0.2 | Jan 2026 | Added technical decisions: Vercel, Web Speech API, Gemini, UI principles |
 | 0.3 | Jan 2026 | Added implementation roadmap with 6 phases |
 | 0.4 | Jan 2026 | Added activation and retention KPIs, retention funnel |
+| 1.0 | Feb 2026 | MVP live: Hebrew/English language switch (default Hebrew), gender-neutral Hebrew copy, attendees optional, email normalization (at→@), Gemini quota handling (friendly 429 message), Google Calendar + OAuth, deployed on Vercel |
 
 ---
 

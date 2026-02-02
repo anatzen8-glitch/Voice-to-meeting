@@ -38,14 +38,17 @@ You are **not** maintaining two projects. You have:
 ```
 Voice-to-meeting/
 ├── api/
-│   └── parse.js          ← Serverless function (Gemini parsing)
-├── index.html            ← App entry
-├── app.js                ← Voice + UI logic
-├── styles.css            ← Styles
-├── vercel.json           ← Vercel config (version 2 only)
-├── README.md              ← PRD / requirements
-├── GETTING-ACTIVE.md      ← Deployment + MVP steps
-└── REPO-AND-DEPLOYMENT.md ← This file
+│   ├── parse.js            ← Serverless function (Gemini parsing; accepts language)
+│   ├── config.js           ← Returns GOOGLE_CLIENT_ID for frontend
+│   └── calendar-create.js  ← Creates Google Calendar event (OAuth token + details)
+├── index.html              ← App entry (Hebrew default, language toggle)
+├── app.js                  ← Voice + UI logic, Hebrew/English, gender-neutral copy
+├── styles.css              ← Styles
+├── vercel.json             ← Vercel config (version 2 only)
+├── README.md               ← PRD / requirements
+├── GETTING-ACTIVE.md       ← Deployment + MVP steps
+├── SETUP-FROM-SCRATCH.md   ← Full setup (Gemini, Calendar, Vercel, troubleshooting)
+└── REPO-AND-DEPLOYMENT.md  ← This file
 ```
 
 - **Git remote:** `origin` → `https://github.com/anatzen8-glitch/Voice-to-meeting.git`  
@@ -92,6 +95,8 @@ Voice-to-meeting/
 - [ ] Vercel project **voice-meet-cur** is connected to that repo and branch.
 - [ ] Latest deployment on Vercel is **Ready** (green).
 - [ ] **GEMINI_API_KEY** is set in Vercel (Settings → Environment Variables) and you redeployed after setting it.
+- [ ] **GOOGLE_CLIENT_ID** is set in Vercel (for Sign in with Google and Calendar).
+- [ ] If you see **"Resource exhausted" / 429**: Gemini free tier limit — wait 1–2 min and try again; see SETUP-FROM-SCRATCH.md Troubleshooting.
 - [ ] You’re opening the **Vercel production URL** in **Chrome** and allowing the microphone when prompted.
 
 If all of the above are true and it still doesn’t work, the next step is to see the exact error (e.g. in the browser **Developer Tools → Console** and **Network** when you tap the mic).

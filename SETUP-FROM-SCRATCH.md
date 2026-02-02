@@ -26,6 +26,8 @@ This guide walks through configuring **all services** step-by-step for VoiceMeet
 6. **Copy the API key** (starts with `AIza...` or similar)
 7. **Save it somewhere safe** - you'll add it to Vercel in Step 3
 
+**Gemini free tier limits:** The API has rate limits (e.g. ~15–20 requests per minute) and daily caps. If you see **"Resource exhausted"** or **429** in the app or logs, you've hit the quota for that period. Wait 1–2 minutes (or until the next day for daily limit) and try again. The app shows a friendly message: "המכסה זמנית מלאה. נסה שוב בעוד דקה." / "API quota used for now. Try again in a minute."
+
 **Checkpoint:** You have a Gemini API key copied.
 
 ---
@@ -198,13 +200,14 @@ This guide walks through configuring **all services** step-by-step for VoiceMeet
    - Sign in with the email you added as a test user (anat.zenou@gmail.com)
    - Allow calendar access when asked
    - You should see **"Signed in"** status
-3. **Test voice:**
+3. **Language:** Default is Hebrew. Use **עברית / English** in the header to switch; conversation and UI follow the selected language.
+4. **Test voice:**
    - Click the **mic button**
-   - Say: *"Meeting with test@example.com tomorrow at 3pm"*
-   - You should see your message and **"I understood: ..."**
-4. **Test scheduling:**
-   - When draft is complete, click **"Schedule it"**
-   - Check your **Google Calendar** - the event should appear
+   - Say: *"Meeting with test@example.com tomorrow at 3pm"* (or in Hebrew)
+   - You should see your message and the app's understanding (e.g. "התקבל:" / "I understood: ...")
+5. **Test scheduling:**
+   - When draft is complete (date + time), click **"יש אישור לזימון?"** (Hebrew) or **"Schedule it"** (English)
+   - Check your **Google Calendar** — the event should appear
 
 **Checkpoint:** Everything works end-to-end!
 
@@ -223,6 +226,10 @@ This guide walks through configuring **all services** step-by-step for VoiceMeet
 
 ### 404 error on Vercel
 - **Fix:** Make sure Vercel is connected to the correct repo (`Voice-to-meeting`) and the correct branch
+
+### "Resource exhausted" / 429 when speaking
+- **Cause:** Gemini API free tier limit (rate limit or daily quota).
+- **Fix:** Wait 1–2 minutes and try again; for daily limit, wait until the next day. The app shows a friendly message instead of the raw error. Optionally enable billing in Google Cloud for higher limits.
 
 ---
 
