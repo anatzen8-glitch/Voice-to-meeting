@@ -201,19 +201,42 @@ function draftToStartEnd() {
     }
 
     const end = new Date(start.getTime() + duration * 60 * 1000);
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    
+    // Format date/time in Israel timezone (Asia/Jerusalem) as RFC3339 ISO string
+    // Since Google Calendar API accepts timeZone in the event object, we format the time
+    // as it appears in Israel, then let Google handle timezone conversion
+    const israelTz = 'Asia/Jerusalem';
     const fmt = (d) => {
-        const y = d.getFullYear();
-        const M = String(d.getMonth() + 1).padStart(2, '0');
-        const D = String(d.getDate()).padStart(2, '0');
-        const H = String(d.getHours()).padStart(2, '0');
-        const min = String(d.getMinutes()).padStart(2, '0');
-        const s = String(d.getSeconds()).padStart(2, '0');
-        const offset = -d.getTimezoneOffset();
-        const sign = offset >= 0 ? '+' : '-';
-        const oh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
-        const om = String(Math.abs(offset) % 60).padStart(2, '0');
-        return `${y}-${M}-${D}T${H}:${min}:${s}${sign}${oh}:${om}`;
+        // Get what this date/time looks like in Israel timezone
+        const israelDateStr = d.toLocaleString('en-US', {
+            timeZone: israelTz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        // Format: "MM/DD/YYYY, HH:mm:ss"
+        const [datePart, timePart] = israelDateStr.split(', ');
+        const [month, day, year] = datePart.split('/');
+        const [hour, minute, second] = timePart.split(':');
+        
+        // Determine Israel timezone offset (UTC+2 in winter, UTC+3 in summer/DST)
+        // DST in Israel: last Friday in March to last Sunday in October (approximately)
+        const m = parseInt(month, 10);
+        const dayNum = parseInt(day, 10);
+        let offset = '+02:00'; // Default: winter time (UTC+2)
+        if (m >= 4 && m <= 9) {
+            offset = '+03:00'; // Summer months: definitely DST (UTC+3)
+        } else if (m === 3 && dayNum >= 25) {
+            offset = '+03:00'; // Late March: likely DST
+        } else if (m === 10 && dayNum <= 25) {
+            offset = '+03:00'; // Early October: likely DST
+        }
+        
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
     };
     return { start_iso: fmt(start), end_iso: fmt(end) };
 }
@@ -246,10 +269,16 @@ async function createCalendarEvent() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            addMessage(data.error || 'Failed to create event. Try again.', 'system');
+            console.error('Calendar create error:', res.status, data);
+            const errorMsg = data.error || data.details || 'Failed to create event';
+            addMessage(`Error: ${errorMsg}. Check console (F12) for details.`, 'system');
             return;
         }
-        addMessage('Done! Meeting scheduled.', 'system');
+        console.log('Calendar event created:', data);
+        const eventLink = data.htmlLink ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline;">View in Calendar</a>` : '';
+        const eventInfo = data.summary ? ` "${data.summary}"` : '';
+        const organizerInfo = data.organizer ? ` (in ${data.organizer}'s calendar)` : '';
+        addMessage(`Done! Meeting scheduled${eventInfo}${organizerInfo}.${eventLink}`, 'system');
         meetingDraft = { title: null, date: null, time: null, duration: null, attendee: null, location: null };
         scheduleWrap.classList.add('hidden');
     } catch (e) {

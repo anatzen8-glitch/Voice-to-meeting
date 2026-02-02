@@ -23,14 +23,27 @@ module.exports = async function handler(req, res) {
 
     const event = {
         summary: title || 'VoiceMeet',
-        start: { dateTime: start_iso },
-        end: { dateTime: end_iso }
+        start: { 
+            dateTime: start_iso,
+            timeZone: 'Asia/Jerusalem'
+        },
+        end: { 
+            dateTime: end_iso,
+            timeZone: 'Asia/Jerusalem'
+        }
     };
     if (attendee && attendee.includes('@')) {
         event.attendees = [{ email: attendee }];
     }
     if (location) event.location = location;
 
+    console.log('Creating calendar event:', {
+        title: event.summary,
+        start: event.start.dateTime,
+        end: event.end.dateTime,
+        attendee: event.attendees?.[0]?.email
+    });
+    
     try {
         const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
             method: 'POST',
@@ -51,10 +64,21 @@ module.exports = async function handler(req, res) {
         }
 
         const created = await response.json();
+        console.log('Calendar event created successfully:', {
+            eventId: created.id,
+            summary: created.summary,
+            start: created.start,
+            end: created.end,
+            htmlLink: created.htmlLink,
+            organizer: created.organizer?.email
+        });
         return res.status(200).json({
             success: true,
             eventId: created.id,
-            htmlLink: created.htmlLink
+            htmlLink: created.htmlLink,
+            summary: created.summary,
+            start: created.start?.dateTime || created.start?.date,
+            organizer: created.organizer?.email
         });
     } catch (e) {
         console.error('calendar-create error', e.message);
