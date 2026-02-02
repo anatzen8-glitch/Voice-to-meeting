@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { text, draft } = req.body;
+    const { text, draft, language = 'he' } = req.body;
 
     if (!text) {
         return res.status(400).json({ error: 'No text provided' });
@@ -36,8 +36,10 @@ module.exports = async function handler(req, res) {
         ? `Current meeting draft so far: ${JSON.stringify(draft)}. Only fill in fields the user is adding or changing in this turn; use null for anything not mentioned now.\n\n`
         : '';
 
+    const responseLanguage = language === 'he' ? 'Hebrew' : 'English';
     const prompt = `You are a meeting scheduling assistant. Extract meeting details from the user's speech.
-The user may speak in Hebrew or English. Always respond in this exact JSON format:
+The user is speaking in ${responseLanguage}. Respond in ${responseLanguage} for the raw_interpretation field, but keep all other fields (dates, times, emails) in their standard formats.
+Always respond in this exact JSON format:
 
 {
     "title": "meeting title or null if not mentioned",
@@ -46,7 +48,7 @@ The user may speak in Hebrew or English. Always respond in this exact JSON forma
     "duration": "duration in minutes as number (e.g., 30, 60) or null",
     "attendee": "email address if mentioned (convert 'at' to '@', e.g., 'david at gmail.com' -> 'david@gmail.com'), or name if mentioned, or null if no attendees",
     "location": "location if mentioned or null",
-    "raw_interpretation": "brief summary of what you understood in the same language the user spoke"
+    "raw_interpretation": "brief summary of what you understood in ${responseLanguage}"
 }
 
 Important rules:

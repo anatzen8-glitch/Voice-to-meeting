@@ -24,11 +24,76 @@ let accessToken = null;
 let tokenClient = null;
 let googleClientId = '';
 
+// Language: Hebrew (עברית) or English
+let currentLanguage = 'he'; // Default: Hebrew (עברית)
+const translations = {
+    he: {
+        initialMessage: 'לקביעת פגישה אפשר ללחוץ על המיקרופון ולתת פרטים',
+        tapToSpeak: 'לחיצה לדיבור',
+        listening: 'מאזין...',
+        understanding: 'מחשב...',
+        stillNeed: 'נדרש:',
+        gotIt: 'אז אילו הפרטים שיש לי',
+        anyAttendees: 'להוסיף משתתפים או משתתפות?',
+        shouldSchedule: 'לזמן?',
+        scheduled: 'זה ביומן שלך',
+        viewCalendar: 'צפייה בלוח השנה →',
+        signInWithGoogle: 'התחברות עם Google',
+        signedIn: 'התחברנו',
+        scheduleIt: 'יש אישור לזימון?',
+        pleaseSignIn: 'נדרשת התחברות עם Google קודם.',
+        errorUnderstanding: 'לא הבנתי אפשר שוב',
+        noSpeech: 'לא זוהה דיבור. לחיצה לנסות שוב.',
+        micDenied: 'גישה למיקרופון נדחתה. נדרש לאפשר גישה למיקרופון.',
+        errorOccurred: 'אירעה שגיאה. לחיצה לנסות שוב.',
+        errorStarting: 'שגיאה בהתחלה. לחיצה לנסות שוב.',
+        title: 'כותרת',
+        date: 'תאריך',
+        time: 'שעה',
+        duration: 'משך',
+        attendee: 'משתתפים.ות',
+        location: 'מיקום',
+        min: 'דקות'
+    },
+    en: {
+        initialMessage: 'Ready to schedule a meeting. Tap the mic and tell me the details.',
+        tapToSpeak: 'Tap to speak',
+        listening: 'Listening...',
+        understanding: 'Understanding...',
+        stillNeed: 'I still need:',
+        gotIt: 'Got it! Here\'s what I have.',
+        anyAttendees: 'Any attendees to invite?',
+        shouldSchedule: 'Should I schedule this?',
+        scheduled: 'is scheduled in your calendar.',
+        viewCalendar: 'View in Calendar →',
+        signInWithGoogle: 'Sign in with Google',
+        signedIn: 'Signed in',
+        scheduleIt: 'Schedule it',
+        pleaseSignIn: 'Please sign in with Google first.',
+        errorUnderstanding: 'Sorry, I had trouble understanding. Try again?',
+        noSpeech: 'No speech detected. Tap to try again.',
+        micDenied: 'Microphone access denied. Please allow mic access.',
+        errorOccurred: 'Error occurred. Tap to try again.',
+        errorStarting: 'Error starting. Tap to try again.',
+        title: 'Title',
+        date: 'Date',
+        time: 'Time',
+        duration: 'Duration',
+        attendee: 'Attendee',
+        location: 'Location',
+        min: 'min'
+    }
+};
+
+function t(key) {
+    return translations[currentLanguage][key] || translations.en[key] || key;
+}
+
 // Check for Web Speech API support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!SpeechRecognition) {
-    status.textContent = 'Voice not supported in this browser. Try Chrome.';
+    status.textContent = currentLanguage === 'he' ? 'קול לא נתמך בדפדפן זה. נסה Chrome.' : 'Voice not supported in this browser. Try Chrome.';
     micButton.disabled = true;
 }
 
@@ -40,7 +105,7 @@ if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = 'he-IL'; // Primary: Hebrew
+    recognition.lang = currentLanguage === 'he' ? 'he-IL' : 'en-US';
 
     // Handle results
     recognition.onresult = (event) => {
@@ -54,7 +119,7 @@ if (SpeechRecognition) {
         } else {
             // Final result - add to conversation and parse
             addMessage(transcript, 'user');
-            status.textContent = 'Understanding...';
+            status.textContent = t('understanding');
             parseWithGemini(transcript);
         }
     };
@@ -63,8 +128,8 @@ if (SpeechRecognition) {
     recognition.onend = () => {
         isListening = false;
         micButton.classList.remove('listening');
-        if (status.textContent === 'Listening...') {
-            status.textContent = 'Tap to speak';
+        if (status.textContent === t('listening')) {
+            status.textContent = t('tapToSpeak');
         }
     };
 
@@ -75,11 +140,11 @@ if (SpeechRecognition) {
         micButton.classList.remove('listening');
 
         if (event.error === 'no-speech') {
-            status.textContent = 'No speech detected. Tap to try again.';
+            status.textContent = t('noSpeech');
         } else if (event.error === 'not-allowed') {
-            status.textContent = 'Microphone access denied. Please allow mic access.';
+            status.textContent = t('micDenied');
         } else {
-            status.textContent = 'Error occurred. Tap to try again.';
+            status.textContent = t('errorOccurred');
         }
     };
 }
@@ -92,7 +157,7 @@ async function parseWithGemini(text) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ text, draft: meetingDraft })
+            body: JSON.stringify({ text, draft: meetingDraft, language: currentLanguage })
         });
 
         if (!response.ok) {
@@ -105,8 +170,8 @@ async function parseWithGemini(text) {
             }
             console.error('Parse API error:', response.status, JSON.stringify(errorData, null, 2));
             const errorMsg = errorData.error || errorData.details || `HTTP ${response.status} error`;
-            addMessage(`Error: ${errorMsg}. Check browser console (F12) for details.`, 'system');
-            status.textContent = 'Tap to speak';
+            addMessage(currentLanguage === 'he' ? `שגיאה: ${errorMsg}` : `Error: ${errorMsg}`, 'system');
+            status.textContent = t('tapToSpeak');
             return;
         }
 
@@ -115,8 +180,8 @@ async function parseWithGemini(text) {
 
     } catch (error) {
         console.error('Parse error:', error);
-        addMessage(`Sorry, I had trouble understanding: ${error.message}. Check browser console (F12) for details.`, 'system');
-        status.textContent = 'Tap to speak';
+        addMessage(`${t('errorUnderstanding')} ${error.message}`, 'system');
+        status.textContent = t('tapToSpeak');
     }
 }
 
@@ -149,23 +214,21 @@ function displayParsedResult(parsed) {
 
     // Show summary from the draft (so we don't lose context)
     const details = [];
-    if (meetingDraft.title) details.push(`Title: ${meetingDraft.title}`);
-    if (meetingDraft.date) details.push(`Date: ${meetingDraft.date}`);
-    if (meetingDraft.time) details.push(`Time: ${meetingDraft.time}`);
-    if (meetingDraft.duration) details.push(`Duration: ${meetingDraft.duration} min`);
+    if (meetingDraft.title) details.push(`${t('title')}: ${meetingDraft.title}`);
+    if (meetingDraft.date) details.push(`${t('date')}: ${meetingDraft.date}`);
+    if (meetingDraft.time) details.push(`${t('time')}: ${meetingDraft.time}`);
+    if (meetingDraft.duration) details.push(`${t('duration')}: ${meetingDraft.duration} ${t('min')}`);
     if (meetingDraft.attendee) {
         // Format email nicely: "david at gmail.com" -> "david@gmail.com" or show as "Attendee: email"
         const attendeeStr = meetingDraft.attendee.replace(/\s+at\s+/gi, '@').replace(/\s+/g, '');
-        if (attendeeStr.includes('@')) {
-            details.push(`Attendee: ${attendeeStr}`);
-        } else {
-            details.push(`Attendee: ${meetingDraft.attendee}`);
-        }
+        // Emails always shown in English format
+        details.push(`${t('attendee')}: ${attendeeStr}`);
     }
-    if (meetingDraft.location) details.push(`Location: ${meetingDraft.location}`);
+    if (meetingDraft.location) details.push(`${t('location')}: ${meetingDraft.location}`);
 
     if (details.length > 0) {
-        addMessage('I understood:\n' + details.join('\n'), 'system');
+        const understoodLabel = currentLanguage === 'he' ? 'התקבל:' : 'I understood:';
+        addMessage(`${understoodLabel}\n${details.join('\n')}`, 'system');
     }
 
     const missing = [];
@@ -174,19 +237,19 @@ function displayParsedResult(parsed) {
     // Attendee is optional - don't require it
 
     if (missing.length > 0) {
-        addMessage(`I still need: ${missing.join(', ')}`, 'system');
+        addMessage(`${t('stillNeed')} ${missing.map(m => t(m)).join(', ')}`, 'system');
         if (scheduleWrap) scheduleWrap.classList.add('hidden');
     } else {
         // If no attendee, optionally ask (but don't require)
         if (!meetingDraft.attendee) {
-            addMessage('Got it! Here\'s what I have. Any attendees to invite?', 'system');
+            addMessage(`${t('gotIt')} ${t('anyAttendees')}`, 'system');
         } else {
-            addMessage('Got it! Here\'s what I have. Should I schedule this?', 'system');
+            addMessage(`${t('gotIt')} ${t('shouldSchedule')}`, 'system');
         }
         if (scheduleWrap) scheduleWrap.classList.remove('hidden');
     }
 
-    status.textContent = 'Tap to speak';
+    status.textContent = t('tapToSpeak');
 }
 
 // Convert draft date/time/duration to start_iso and end_iso (user timezone)
@@ -342,18 +405,19 @@ function draftToStartEnd() {
 // Create event on Google Calendar
 async function createCalendarEvent() {
     if (!accessToken) {
-        addMessage('Please sign in with Google first.', 'system');
+        addMessage(t('pleaseSignIn'), 'system');
         return;
     }
     console.log('Creating calendar event from draft:', meetingDraft);
     const times = draftToStartEnd();
     console.log('Converted times:', times);
     if (!times) {
-        addMessage('I couldn\'t figure out the date or time. Try saying the date and time again.', 'system');
+        const errorMsg = currentLanguage === 'he' ? 'לא הובן התאריך או השעה. נסה לומר שוב.' : 'I couldn\'t figure out the date or time. Try saying the date and time again.';
+        addMessage(errorMsg, 'system');
         return;
     }
     scheduleButton.disabled = true;
-    status.textContent = 'Scheduling...';
+    status.textContent = currentLanguage === 'he' ? 'קובעים...' : 'Scheduling...';
     try {
         const res = await fetch('/api/calendar-create', {
             method: 'POST',
@@ -370,23 +434,24 @@ async function createCalendarEvent() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
             console.error('Calendar create error:', res.status, data);
-            const errorMsg = data.error || data.details || 'Failed to create event';
-            addMessage(`Error: ${errorMsg}. Check console (F12) for details.`, 'system');
+            const errorMsg = data.error || data.details || (currentLanguage === 'he' ? 'נכשל ביצירת האירוע' : 'Failed to create event');
+            addMessage(currentLanguage === 'he' ? `שגיאה: ${errorMsg}` : `Error: ${errorMsg}`, 'system');
             return;
         }
         console.log('Calendar event created:', data);
-        const eventTitle = meetingDraft.title || 'Meeting';
+        const eventTitle = meetingDraft.title || (currentLanguage === 'he' ? 'פגישה' : 'Meeting');
         const eventLink = data.htmlLink 
-            ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline; font-weight: 500;">View in Calendar →</a>` 
+            ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline; font-weight: 500;">${t('viewCalendar')}</a>` 
             : '';
-        addMessage(`✓ "${eventTitle}" is scheduled in your calendar.${eventLink}`, 'system');
+        addMessage(`✓ "${eventTitle}" ${t('scheduled')}${eventLink}`, 'system');
         meetingDraft = { title: null, date: null, time: null, duration: null, attendee: null, location: null };
         scheduleWrap.classList.add('hidden');
     } catch (e) {
-        addMessage('Something went wrong. Try again.', 'system');
+        const errorMsg = currentLanguage === 'he' ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.';
+        addMessage(errorMsg, 'system');
     } finally {
         scheduleButton.disabled = false;
-        status.textContent = 'Tap to speak';
+        status.textContent = t('tapToSpeak');
     }
 }
 
@@ -397,7 +462,7 @@ async function initGoogleSignIn() {
         const config = await configRes.json();
         googleClientId = config.googleClientId || '';
         if (!googleClientId) {
-            signinStatus.textContent = '(Calendar: set GOOGLE_CLIENT_ID in Vercel)';
+            signinStatus.textContent = currentLanguage === 'he' ? '(לוח שנה: הגדר GOOGLE_CLIENT_ID ב-Vercel)' : '(Calendar: set GOOGLE_CLIENT_ID in Vercel)';
             return;
         }
     } catch (e) {
@@ -415,12 +480,12 @@ async function initGoogleSignIn() {
             scope: 'https://www.googleapis.com/auth/calendar.events',
             callback: (tokenResponse) => {
                 accessToken = tokenResponse.access_token;
-                signinStatus.textContent = 'Signed in';
-                if (googleSigninButton) googleSigninButton.textContent = 'Signed in';
+                signinStatus.textContent = t('signedIn');
+                if (googleSigninButton) googleSigninButton.textContent = t('signedIn');
             }
         });
         if (googleSigninButton) {
-            googleSigninButton.textContent = 'Sign in with Google';
+            googleSigninButton.textContent = t('signInWithGoogle');
             googleSigninButton.style.cssText = 'padding:8px 16px;border-radius:8px;border:1px solid #dadce0;background:#fff;cursor:pointer;font-size:14px;';
             googleSigninButton.onclick = () => tokenClient.requestAccessToken({ prompt: '' });
         }
@@ -437,6 +502,43 @@ function addMessage(text, type = 'system') {
     conversation.scrollTop = conversation.scrollHeight;
 }
 
+// Language toggle
+const languageToggle = document.getElementById('language-toggle');
+function updateLanguage(lang) {
+    currentLanguage = lang;
+    // Update HTML lang and dir attributes
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+    // Update speech recognition language
+    if (recognition) {
+        recognition.lang = lang === 'he' ? 'he-IL' : 'en-US';
+    }
+    // Update UI elements
+    if (status) status.textContent = t('tapToSpeak');
+    if (scheduleButton) scheduleButton.textContent = t('scheduleIt');
+    if (languageToggle) {
+        languageToggle.textContent = lang === 'he' ? 'עברית / English' : 'עברית / English';
+    }
+    // Update initial message
+    const initialMsg = document.getElementById('initial-message');
+    if (initialMsg) initialMsg.textContent = t('initialMessage');
+    // Update sign-in status if already signed in
+    if (accessToken && signinStatus) {
+        signinStatus.textContent = t('signedIn');
+    }
+    if (accessToken && googleSigninButton) {
+        googleSigninButton.textContent = t('signedIn');
+    }
+    // Note: We don't translate existing messages, only new ones will use the new language
+}
+
+if (languageToggle) {
+    languageToggle.addEventListener('click', () => {
+        const newLang = currentLanguage === 'he' ? 'en' : 'he';
+        updateLanguage(newLang);
+    });
+}
+
 // Schedule button: create calendar event
 if (scheduleButton) {
     scheduleButton.addEventListener('click', createCalendarEvent);
@@ -448,6 +550,9 @@ initGoogleSignIn();
 // Hide schedule area until draft is complete
 if (scheduleWrap) scheduleWrap.classList.add('hidden');
 
+// Initialize language (Hebrew by default)
+updateLanguage('he');
+
 // Handle mic button click
 micButton.addEventListener('click', () => {
     if (!recognition) return;
@@ -456,16 +561,16 @@ micButton.addEventListener('click', () => {
         recognition.stop();
         isListening = false;
         micButton.classList.remove('listening');
-        status.textContent = 'Tap to speak';
+        status.textContent = t('tapToSpeak');
     } else {
         try {
             recognition.start();
             isListening = true;
             micButton.classList.add('listening');
-            status.textContent = 'Listening...';
+            status.textContent = t('listening');
         } catch (error) {
             console.error('Failed to start recognition:', error);
-            status.textContent = 'Error starting. Tap to try again.';
+            status.textContent = t('errorStarting');
         }
     }
 });

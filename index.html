@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,16 +10,19 @@
     <div class="container">
         <header>
             <h1>VoiceMeet</h1>
-            <div id="google-signin-wrap">
-                <div id="google-signin-button"></div>
-                <span id="signin-status"></span>
+            <div id="header-controls">
+                <button id="language-toggle" aria-label="Switch language">עברית / English</button>
+                <div id="google-signin-wrap">
+                    <div id="google-signin-button"></div>
+                    <span id="signin-status"></span>
+                </div>
             </div>
         </header>
 
         <main>
             <div id="conversation">
-                <div class="message system">
-                    Ready to schedule a meeting. Tap the mic and tell me the details.
+                <div class="message system" id="initial-message">
+                    לקביעת פגישה אפשר ללחוץ על המיקרופון ולתת פרטים
                 </div>
             </div>
 
@@ -30,9 +33,9 @@
                 </svg>
             </button>
 
-            <p id="status">Tap to speak</p>
+            <p id="status"></p>
             <div id="schedule-wrap" class="hidden">
-                <button type="button" id="schedule-button">Schedule it</button>
+                <button type="button" id="schedule-button"></button>
             </div>
         </main>
     </div>
