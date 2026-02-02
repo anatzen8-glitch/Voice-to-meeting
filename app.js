@@ -308,10 +308,11 @@ async function createCalendarEvent() {
             return;
         }
         console.log('Calendar event created:', data);
-        const eventLink = data.htmlLink ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline;">View in Calendar</a>` : '';
-        const eventInfo = data.summary ? ` "${data.summary}"` : '';
-        const organizerInfo = data.organizer ? ` (in ${data.organizer}'s calendar)` : '';
-        addMessage(`Done! Meeting scheduled${eventInfo}${organizerInfo}.${eventLink}`, 'system');
+        const eventTitle = meetingDraft.title || 'Meeting';
+        const eventLink = data.htmlLink 
+            ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline; font-weight: 500;">View in Calendar →</a>` 
+            : '';
+        addMessage(`✓ "${eventTitle}" is scheduled in your calendar.${eventLink}`, 'system');
         meetingDraft = { title: null, date: null, time: null, duration: null, attendee: null, location: null };
         scheduleWrap.classList.add('hidden');
     } catch (e) {
@@ -360,11 +361,11 @@ async function initGoogleSignIn() {
     tryInit();
 }
 
-// Add a message to the conversation
+// Add a message to the conversation (supports HTML)
 function addMessage(text, type = 'system') {
     const message = document.createElement('div');
     message.className = `message ${type}`;
-    message.textContent = text;
+    message.innerHTML = text; // Use innerHTML to support links
     conversation.appendChild(message);
     conversation.scrollTop = conversation.scrollHeight;
 }
