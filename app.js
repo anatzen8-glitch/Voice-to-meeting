@@ -122,12 +122,17 @@ async function parseWithGemini(text) {
 
 // Merge parsed result into draft (only set fields that are provided)
 function mergeIntoDraft(parsed) {
+    console.log('Merging parsed result into draft:', parsed);
     if (parsed.title != null && parsed.title !== '') meetingDraft.title = parsed.title;
     if (parsed.date != null && parsed.date !== '') meetingDraft.date = parsed.date;
-    if (parsed.time != null && parsed.time !== '') meetingDraft.time = parsed.time;
+    if (parsed.time != null && parsed.time !== '') {
+        console.log('Setting time from Gemini:', parsed.time);
+        meetingDraft.time = parsed.time;
+    }
     if (parsed.duration != null && parsed.duration !== '') meetingDraft.duration = parsed.duration;
     if (parsed.attendee != null && parsed.attendee !== '') meetingDraft.attendee = parsed.attendee;
     if (parsed.location != null && parsed.location !== '') meetingDraft.location = parsed.location;
+    console.log('Draft after merge:', meetingDraft);
 }
 
 // Display what we understood and update draft (keeps context across turns)
@@ -185,19 +190,45 @@ function draftToStartEnd() {
         }
     }
 
-    const timeMatch = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i) || timeStr.match(/(\d{1,2})/);
+    // Convert Hebrew numbers to digits (e.g., "חמש" -> "5", "שלוש" -> "3")
+    const hebrewToNumber = {
+        'אחת': '1', 'אחד': '1', 'שתיים': '2', 'שניים': '2', 'שלוש': '3', 'שלושה': '3',
+        'ארבע': '4', 'ארבעה': '4', 'חמש': '5', 'חמישה': '5', 'שש': '6', 'שישה': '6',
+        'שבע': '7', 'שבעה': '7', 'שמונה': '8', 'תשע': '9', 'תשעה': '9', 'עשר': '10',
+        'אחת עשרה': '11', 'שתים עשרה': '12', 'שלוש עשרה': '13', 'ארבע עשרה': '14',
+        'חמש עשרה': '15', 'שש עשרה': '16', 'שבע עשרה': '17', 'שמונה עשרה': '18',
+        'תשע עשרה': '19', 'עשרים': '20', 'עשרים ואחת': '21', 'עשרים ושתיים': '22',
+        'עשרים ושלוש': '23', 'עשרים וארבע': '24'
+    };
+    let normalizedTimeStr = timeStr.toLowerCase();
+    for (const [hebrew, num] of Object.entries(hebrewToNumber)) {
+        normalizedTimeStr = normalizedTimeStr.replace(new RegExp(hebrew, 'g'), num);
+    }
+    
+    const timeMatch = normalizedTimeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i) || normalizedTimeStr.match(/(\d{1,2})/);
     if (timeMatch) {
         let h = parseInt(timeMatch[1], 10);
         const m = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+        console.log('Parsing time:', { original: timeStr, normalized: normalizedTimeStr, hour: h, minute: m });
+        
         if (timeMatch[3]) {
             if (timeMatch[3].toLowerCase() === 'pm' && h < 12) h += 12;
             if (timeMatch[3].toLowerCase() === 'am' && h === 12) h = 0;
-        } else if (h <= 12 && !timeStr.includes(':') && timeStr.toLowerCase().includes('pm')) {
+        } else if (h <= 12 && !normalizedTimeStr.includes(':') && normalizedTimeStr.toLowerCase().includes('pm')) {
             h += 12;
-        } else if (h < 7 && !timeStr.includes(':')) {
+        } else if (h < 7 && !normalizedTimeStr.includes(':')) {
+            // Assume PM for single-digit hours without AM/PM (common in Hebrew: "5" = 5PM)
             h += 12;
+        } else if (h >= 7 && h <= 12 && !normalizedTimeStr.includes(':')) {
+            // For 7-12, assume PM unless context suggests otherwise
+            // But actually, let's be smarter: if it's a single number 7-12, it's ambiguous
+            // Default to PM for evening hours
+            if (h < 12) h += 12; // 7-11 become 7PM-11PM
         }
+        console.log('Final parsed time:', { hour: h, minute: m, time24: `${h}:${m}` });
         start.setHours(h, m, 0, 0);
+    } else {
+        console.warn('Could not parse time:', timeStr);
     }
 
     const end = new Date(start.getTime() + duration * 60 * 1000);
@@ -247,7 +278,9 @@ async function createCalendarEvent() {
         addMessage('Please sign in with Google first.', 'system');
         return;
     }
+    console.log('Creating calendar event from draft:', meetingDraft);
     const times = draftToStartEnd();
+    console.log('Converted times:', times);
     if (!times) {
         addMessage('I couldn\'t figure out the date or time. Try saying the date and time again.', 'system');
         return;
