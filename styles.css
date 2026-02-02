@@ -100,6 +100,12 @@ header h1 {
     background: #2d8e47;
 }
 
+#schedule-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #34a853;
+}
+
 main {
     flex: 1;
     display: flex;
@@ -127,13 +133,13 @@ main {
 .message.system {
     background: #e8f4fd;
     color: #1a73e8;
-    margin-right: auto;
+    margin-inline-end: auto; /* Aligns to start in both LTR and RTL */
 }
 
 .message.user {
     background: #1a73e8;
     color: #fff;
-    margin-left: auto;
+    margin-inline-start: auto; /* Aligns to end in both LTR and RTL */
 }
 
 #mic-button {

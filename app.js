@@ -95,8 +95,8 @@ function t(key) {
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (!SpeechRecognition) {
-    status.textContent = currentLanguage === 'he' ? 'קול לא נתמך בדפדפן זה. נסה Chrome.' : 'Voice not supported in this browser. Try Chrome.';
-    micButton.disabled = true;
+    if (status) status.textContent = currentLanguage === 'he' ? 'קול לא נתמך בדפדפן זה. נסה Chrome.' : 'Voice not supported in this browser. Try Chrome.';
+    if (micButton) micButton.disabled = true;
 }
 
 // Create speech recognition instance
@@ -117,11 +117,11 @@ if (SpeechRecognition) {
 
         // Show interim results in status
         if (!event.results[0].isFinal) {
-            status.textContent = transcript;
+            if (status) status.textContent = transcript;
         } else {
             // Final result - add to conversation and parse
             addMessage(transcript, 'user');
-            status.textContent = t('understanding');
+            if (status) status.textContent = t('understanding');
             parseWithGemini(transcript);
         }
     };
@@ -129,8 +129,8 @@ if (SpeechRecognition) {
     // Handle end of speech
     recognition.onend = () => {
         isListening = false;
-        micButton.classList.remove('listening');
-        if (status.textContent === t('listening')) {
+        if (micButton) micButton.classList.remove('listening');
+        if (status && status.textContent === t('listening')) {
             status.textContent = t('tapToSpeak');
         }
     };
@@ -139,14 +139,16 @@ if (SpeechRecognition) {
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         isListening = false;
-        micButton.classList.remove('listening');
+        if (micButton) micButton.classList.remove('listening');
 
-        if (event.error === 'no-speech') {
-            status.textContent = t('noSpeech');
-        } else if (event.error === 'not-allowed') {
-            status.textContent = t('micDenied');
-        } else {
-            status.textContent = t('errorOccurred');
+        if (status) {
+            if (event.error === 'no-speech') {
+                status.textContent = t('noSpeech');
+            } else if (event.error === 'not-allowed') {
+                status.textContent = t('micDenied');
+            } else {
+                status.textContent = t('errorOccurred');
+            }
         }
     };
 }
@@ -164,11 +166,13 @@ async function parseWithGemini(text) {
 
         if (!response.ok) {
             let errorData;
+            let bodyText = '';
             try {
-                const text = await response.text();
-                errorData = JSON.parse(text);
+                bodyText = await response.text();
+                errorData = JSON.parse(bodyText);
             } catch (e) {
-                errorData = { error: `HTTP ${response.status}: ${await response.text().catch(() => 'Unknown error')}` };
+                // Use already-read bodyText instead of reading again
+                errorData = { error: `HTTP ${response.status}: ${bodyText || 'Unknown error'}` };
             }
             console.error('Parse API error:', response.status, JSON.stringify(errorData, null, 2));
             const errorMsg = errorData.error || errorData.details || `HTTP ${response.status} error`;
@@ -223,10 +227,8 @@ function displayParsedResult(parsed) {
     if (meetingDraft.time) details.push(`${t('time')}: ${meetingDraft.time}`);
     if (meetingDraft.duration) details.push(`${t('duration')}: ${meetingDraft.duration} ${t('min')}`);
     if (meetingDraft.attendee) {
-        // Format email nicely: "david at gmail.com" -> "david@gmail.com" or show as "Attendee: email"
-        const attendeeStr = meetingDraft.attendee.replace(/\s+at\s+/gi, '@').replace(/\s+/g, '');
-        // Emails always shown in English format
-        details.push(`${t('attendee')}: ${attendeeStr}`);
+        // Email already normalized in mergeIntoDraft()
+        details.push(`${t('attendee')}: ${meetingDraft.attendee}`);
     }
     if (meetingDraft.location) details.push(`${t('location')}: ${meetingDraft.location}`);
 
@@ -256,11 +258,22 @@ function displayParsedResult(parsed) {
     status.textContent = t('tapToSpeak');
 }
 
+// Constants for duration
+const DEFAULT_DURATION_MIN = 30;
+const MIN_DURATION_MIN = 15;
+
 // Convert draft date/time/duration to start_iso and end_iso (user timezone)
+// Returns null if required fields (date, time) are missing
 function draftToStartEnd() {
-    const dateStr = (meetingDraft.date || '').toLowerCase().trim();
-    const timeStr = (meetingDraft.time || '').toString().trim();
-    const duration = Math.max(15, parseInt(meetingDraft.duration, 10) || 30);
+    // Return null if required fields are missing
+    if (!meetingDraft.date || !meetingDraft.time) {
+        console.warn('draftToStartEnd: missing date or time', { date: meetingDraft.date, time: meetingDraft.time });
+        return null;
+    }
+
+    const dateStr = meetingDraft.date.toLowerCase().trim();
+    const timeStr = meetingDraft.time.toString().trim();
+    const duration = Math.max(MIN_DURATION_MIN, parseInt(meetingDraft.duration, 10) || DEFAULT_DURATION_MIN);
 
     const now = new Date();
     let start = new Date(now);
@@ -444,10 +457,11 @@ async function createCalendarEvent() {
         }
         console.log('Calendar event created:', data);
         const eventTitle = meetingDraft.title || (currentLanguage === 'he' ? 'פגישה' : 'Meeting');
-        const eventLink = data.htmlLink 
-            ? ` <a href="${data.htmlLink}" target="_blank" style="color: #1a73e8; text-decoration: underline; font-weight: 500;">${t('viewCalendar')}</a>` 
+        const eventLink = data.htmlLink
+            ? ` <a href="${escapeHtml(data.htmlLink)}" target="_blank" style="color: #1a73e8; text-decoration: underline; font-weight: 500;">${t('viewCalendar')}</a>`
             : '';
-        addMessage(`✓ "${eventTitle}" ${t('scheduled')}${eventLink}`, 'system');
+        // Use allowHtml=true for the calendar link, but escape the title
+        addMessage(`✓ "${escapeHtml(eventTitle)}" ${t('scheduled')}${eventLink}`, 'system', true);
         meetingDraft = { title: null, date: null, time: null, duration: null, attendee: null, location: null };
         scheduleWrap.classList.add('hidden');
     } catch (e) {
@@ -466,11 +480,11 @@ async function initGoogleSignIn() {
         const config = await configRes.json();
         googleClientId = config.googleClientId || '';
         if (!googleClientId) {
-            signinStatus.textContent = currentLanguage === 'he' ? '(לוח שנה: הגדר GOOGLE_CLIENT_ID ב-Vercel)' : '(Calendar: set GOOGLE_CLIENT_ID in Vercel)';
+            if (signinStatus) signinStatus.textContent = currentLanguage === 'he' ? '(לוח שנה: הגדר GOOGLE_CLIENT_ID ב-Vercel)' : '(Calendar: set GOOGLE_CLIENT_ID in Vercel)';
             return;
         }
     } catch (e) {
-        signinStatus.textContent = '';
+        if (signinStatus) signinStatus.textContent = '';
         return;
     }
 
@@ -484,7 +498,8 @@ async function initGoogleSignIn() {
             scope: 'https://www.googleapis.com/auth/calendar.events',
             callback: (tokenResponse) => {
                 accessToken = tokenResponse.access_token;
-                signinStatus.textContent = t('signedIn');
+                // Update both signin indicators consistently
+                if (signinStatus) signinStatus.textContent = t('signedIn');
                 if (googleSigninButton) googleSigninButton.textContent = t('signedIn');
             }
         });
@@ -497,11 +512,23 @@ async function initGoogleSignIn() {
     tryInit();
 }
 
-// Add a message to the conversation (supports HTML)
-function addMessage(text, type = 'system') {
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Add a message to the conversation
+// Use allowHtml=true only for trusted content (e.g., calendar links we generate)
+function addMessage(text, type = 'system', allowHtml = false) {
     const message = document.createElement('div');
     message.className = `message ${type}`;
-    message.innerHTML = text; // Use innerHTML to support links
+    if (allowHtml) {
+        message.innerHTML = text;
+    } else {
+        message.textContent = text;
+    }
     conversation.appendChild(message);
     conversation.scrollTop = conversation.scrollHeight;
 }
@@ -558,26 +585,28 @@ if (scheduleWrap) scheduleWrap.classList.add('hidden');
 updateLanguage('he');
 
 // Handle mic button click
-micButton.addEventListener('click', () => {
-    if (!recognition) return;
+if (micButton) {
+    micButton.addEventListener('click', () => {
+        if (!recognition) return;
 
-    if (isListening) {
-        recognition.stop();
-        isListening = false;
-        micButton.classList.remove('listening');
-        status.textContent = t('tapToSpeak');
-    } else {
-        try {
-            recognition.start();
-            isListening = true;
-            micButton.classList.add('listening');
-            status.textContent = t('listening');
-        } catch (error) {
-            console.error('Failed to start recognition:', error);
-            status.textContent = t('errorStarting');
+        if (isListening) {
+            recognition.stop();
+            isListening = false;
+            micButton.classList.remove('listening');
+            if (status) status.textContent = t('tapToSpeak');
+        } else {
+            try {
+                recognition.start();
+                isListening = true;
+                micButton.classList.add('listening');
+                if (status) status.textContent = t('listening');
+            } catch (error) {
+                console.error('Failed to start recognition:', error);
+                if (status) status.textContent = t('errorStarting');
+            }
         }
-    }
-});
+    });
+}
 
 // Log that app is ready
 console.log('VoiceMeet loaded - Phase 3: Understanding ready');

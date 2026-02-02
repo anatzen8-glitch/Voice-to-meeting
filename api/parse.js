@@ -1,6 +1,16 @@
 // Serverless function to parse meeting details using Gemini
 // Vercel will run this at /api/parse
 
+// Escape user input to prevent prompt injection
+function escapeForPrompt(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/\\/g, '\\\\')  // Escape backslashes first
+        .replace(/"/g, '\\"')     // Escape double quotes
+        .replace(/\n/g, '\\n')    // Escape newlines
+        .replace(/\r/g, '\\r');   // Escape carriage returns
+}
+
 module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -63,7 +73,7 @@ Important rules:
 - For times: Convert Hebrew times to 24-hour format or include am/pm (e.g., "6 בערב" -> "18:00" or "6pm")
 - Keep raw_interpretation friendly and brief
 
-${draftLine}User said: "${text}"
+${draftLine}User said: "${escapeForPrompt(text)}"
 
 Respond ONLY with the JSON, no other text.`;
 
