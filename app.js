@@ -96,7 +96,11 @@ async function parseWithGemini(text) {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to parse');
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Parse API error:', response.status, errorData);
+            addMessage(`Error: ${errorData.error || 'Failed to parse'}. Check console for details.`, 'system');
+            status.textContent = 'Tap to speak';
+            return;
         }
 
         const parsed = await response.json();
@@ -104,7 +108,7 @@ async function parseWithGemini(text) {
 
     } catch (error) {
         console.error('Parse error:', error);
-        addMessage('Sorry, I had trouble understanding. Try again?', 'system');
+        addMessage(`Sorry, I had trouble understanding: ${error.message}. Check browser console (F12) for details.`, 'system');
         status.textContent = 'Tap to speak';
     }
 }
