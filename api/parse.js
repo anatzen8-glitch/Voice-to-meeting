@@ -41,8 +41,8 @@ The user may speak in Hebrew or English. Always respond in this exact JSON forma
 
 {
     "title": "meeting title or null if not mentioned",
-    "date": "the date mentioned (e.g., 'tomorrow', 'Sunday', '15/2') or null",
-    "time": "the time mentioned (e.g., '15:00', '3pm') or null",
+    "date": "the date mentioned in format 'YYYY-MM-DD' or relative like 'tomorrow', 'today' (e.g., '2026-02-20', 'tomorrow', 'מחר') or null",
+    "time": "the time mentioned in 24-hour format or 12-hour with am/pm (e.g., '18:00', '6pm', '6:00 בערב') or null",
     "duration": "duration in minutes as number (e.g., 30, 60) or null",
     "attendee": "email address if mentioned, or name if mentioned, or null",
     "location": "location if mentioned or null",
@@ -55,6 +55,8 @@ Important rules:
 - Extract email addresses exactly as spoken
 - For names without email, just capture the name
 - "מחר" means "tomorrow", "היום" means "today"
+- For dates: Convert Hebrew dates to YYYY-MM-DD format (e.g., "20 לפברואר 2026" -> "2026-02-20")
+- For times: Convert Hebrew times to 24-hour format or include am/pm (e.g., "6 בערב" -> "18:00" or "6pm")
 - Keep raw_interpretation friendly and brief
 
 ${draftLine}User said: "${text}"

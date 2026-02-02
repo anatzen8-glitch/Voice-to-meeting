@@ -181,15 +181,65 @@ function draftToStartEnd() {
     const now = new Date();
     let start = new Date(now);
 
-    if (dateStr === 'tomorrow' || dateStr === 'מחר') {
+    // Convert Hebrew month names to English
+    const hebrewMonths = {
+        'ינואר': 'January', 'פברואר': 'February', 'מרץ': 'March', 'מרס': 'March',
+        'מארס': 'March', 'אפריל': 'April', 'מאי': 'May', 'יוני': 'June',
+        'יולי': 'July', 'אוגוסט': 'August', 'ספטמבר': 'September', 'אוקטובר': 'October',
+        'נובמבר': 'November', 'דצמבר': 'December'
+    };
+    
+    let normalizedDateStr = dateStr;
+    for (const [hebrew, english] of Object.entries(hebrewMonths)) {
+        normalizedDateStr = normalizedDateStr.replace(new RegExp(hebrew, 'gi'), english);
+    }
+    // Remove Hebrew "ל" (to) prefix if present: "20 לפברואר" -> "20 February"
+    normalizedDateStr = normalizedDateStr.replace(/\s*ל\s*/g, ' ');
+    
+    console.log('Parsing date:', { original: dateStr, normalized: normalizedDateStr });
+
+    if (normalizedDateStr === 'tomorrow' || normalizedDateStr === 'מחר') {
         start.setDate(start.getDate() + 1);
-    } else if (dateStr !== 'today' && dateStr !== 'היום') {
-        const parsed = new Date(dateStr);
+    } else if (normalizedDateStr !== 'today' && normalizedDateStr !== 'היום') {
+        // Try parsing the normalized date
+        let parsed = new Date(normalizedDateStr);
+        
+        // If YYYY-MM-DD format (from Gemini), parse directly
+        if (isNaN(parsed.getTime()) && /^\d{4}-\d{1,2}-\d{1,2}$/.test(normalizedDateStr)) {
+            parsed = new Date(normalizedDateStr + 'T00:00:00');
+        }
+        
+        if (isNaN(parsed.getTime())) {
+            // Try common formats: "20 February", "February 20", "20/2", etc.
+            const dateMatch = normalizedDateStr.match(/(\d{1,2})\s*(?:ל|to|-|/)\s*(\w+)/i) || 
+                             normalizedDateStr.match(/(\d{1,2})\s+(\w+)/i) ||
+                             normalizedDateStr.match(/(\w+)\s+(\d{1,2})/i);
+            if (dateMatch) {
+                const day = parseInt(dateMatch[1] || dateMatch[2], 10);
+                const monthStr = (dateMatch[2] || dateMatch[1]).toLowerCase();
+                const currentYear = now.getFullYear();
+                // Try to parse as "day month" or "month day"
+                parsed = new Date(`${monthStr} ${day}, ${currentYear}`);
+                if (isNaN(parsed.getTime())) {
+                    parsed = new Date(`${day} ${monthStr} ${currentYear}`);
+                }
+            }
+        }
         if (!isNaN(parsed.getTime())) {
             start = parsed;
+            console.log('Parsed date:', start, 'from:', normalizedDateStr);
+        } else {
+            console.warn('Could not parse date:', normalizedDateStr, '- using today');
         }
     }
 
+    // Convert Hebrew time words to English
+    let normalizedTimeStr = timeStr.toLowerCase();
+    normalizedTimeStr = normalizedTimeStr.replace(/בערב/g, 'pm');
+    normalizedTimeStr = normalizedTimeStr.replace(/אחר הצהריים/g, 'pm');
+    normalizedTimeStr = normalizedTimeStr.replace(/בוקר/g, 'am');
+    normalizedTimeStr = normalizedTimeStr.replace(/צהריים/g, 'pm');
+    
     // Convert Hebrew numbers to digits (e.g., "חמש" -> "5", "שלוש" -> "3")
     const hebrewToNumber = {
         'אחת': '1', 'אחד': '1', 'שתיים': '2', 'שניים': '2', 'שלוש': '3', 'שלושה': '3',
@@ -200,7 +250,6 @@ function draftToStartEnd() {
         'תשע עשרה': '19', 'עשרים': '20', 'עשרים ואחת': '21', 'עשרים ושתיים': '22',
         'עשרים ושלוש': '23', 'עשרים וארבע': '24'
     };
-    let normalizedTimeStr = timeStr.toLowerCase();
     for (const [hebrew, num] of Object.entries(hebrewToNumber)) {
         normalizedTimeStr = normalizedTimeStr.replace(new RegExp(hebrew, 'g'), num);
     }
@@ -214,16 +263,17 @@ function draftToStartEnd() {
         if (timeMatch[3]) {
             if (timeMatch[3].toLowerCase() === 'pm' && h < 12) h += 12;
             if (timeMatch[3].toLowerCase() === 'am' && h === 12) h = 0;
-        } else if (h <= 12 && !normalizedTimeStr.includes(':') && normalizedTimeStr.toLowerCase().includes('pm')) {
+        } else if (h <= 12 && !normalizedTimeStr.includes(':') && (normalizedTimeStr.toLowerCase().includes('pm') || normalizedTimeStr.includes('בערב') || normalizedTimeStr.includes('אחר הצהריים'))) {
+            // Hebrew: "בערב" = "in the evening" = PM, "אחר הצהריים" = "afternoon" = PM
             h += 12;
         } else if (h < 7 && !normalizedTimeStr.includes(':')) {
             // Assume PM for single-digit hours without AM/PM (common in Hebrew: "5" = 5PM)
             h += 12;
         } else if (h >= 7 && h <= 12 && !normalizedTimeStr.includes(':')) {
-            // For 7-12, assume PM unless context suggests otherwise
-            // But actually, let's be smarter: if it's a single number 7-12, it's ambiguous
-            // Default to PM for evening hours
-            if (h < 12) h += 12; // 7-11 become 7PM-11PM
+            // For 7-12, check if Hebrew indicates PM
+            if (normalizedTimeStr.includes('בערב') || normalizedTimeStr.includes('אחר הצהריים') || normalizedTimeStr.includes('לילה')) {
+                if (h < 12) h += 12; // 7-11 become 7PM-11PM
+            }
         }
         console.log('Final parsed time:', { hour: h, minute: m, time24: `${h}:${m}` });
         start.setHours(h, m, 0, 0);
