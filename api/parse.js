@@ -26,7 +26,10 @@ module.exports = async function handler(req, res) {
 
     if (!apiKey) {
         console.error('GEMINI_API_KEY not found in environment');
-        return res.status(500).json({ error: 'API key not configured' });
+        return res.status(500).json({ 
+            error: 'API key not configured',
+            details: 'GEMINI_API_KEY environment variable is missing. Add it in Vercel → Settings → Environment Variables and redeploy.'
+        });
     }
 
     const draftLine = draft && (draft.date || draft.time || draft.attendee || draft.title || draft.duration || draft.location)
@@ -82,7 +85,18 @@ Respond ONLY with the JSON, no other text.`;
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Gemini API error:', response.status, errorText);
-            return res.status(500).json({ error: 'Failed to parse with AI', details: errorText });
+            let errorDetails;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorDetails = errorJson.error?.message || errorJson.error || errorText;
+            } catch {
+                errorDetails = errorText;
+            }
+            return res.status(500).json({ 
+                error: 'Failed to parse with AI', 
+                details: errorDetails,
+                status: response.status
+            });
         }
 
         const data = await response.json();
@@ -104,7 +118,11 @@ Respond ONLY with the JSON, no other text.`;
         return res.status(200).json(parsed);
 
     } catch (error) {
-        console.error('Parse error:', error.message);
-        return res.status(500).json({ error: 'Failed to process request', details: error.message });
+        console.error('Parse error:', error.message, error.stack);
+        return res.status(500).json({ 
+            error: 'Failed to process request', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
