@@ -211,7 +211,7 @@ function draftToStartEnd() {
         
         if (isNaN(parsed.getTime())) {
             // Try common formats: "20 February", "February 20", "20/2", etc.
-            const dateMatch = normalizedDateStr.match(/(\d{1,2})\s*(?:ל|to|-|/)\s*(\w+)/i) || 
+            const dateMatch = normalizedDateStr.match(/(\d{1,2})\s*(?:ל|to|-|\/)\s*(\w+)/i) || 
                              normalizedDateStr.match(/(\d{1,2})\s+(\w+)/i) ||
                              normalizedDateStr.match(/(\w+)\s+(\d{1,2})/i);
             if (dateMatch) {
