@@ -1,0 +1,238 @@
+{
+  "name": "VoiceMeet - Parse & Calendar",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voicemeet-parse",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-parse",
+      "name": "Webhook - Parse",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "voicemeet-parse"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "queryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $credentials.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ role: 'user', parts: [{ text: $json.prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 500 } }) }}",
+        "options": {}
+      },
+      "id": "gemini-request",
+      "name": "Gemini API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "gemini-key",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the Gemini prompt from incoming data\nconst { text, draft, language } = $input.first().json.body;\n\nconst responseLanguage = language === 'he' ? 'Hebrew' : 'English';\n\n// Escape user input to prevent prompt injection\nfunction escapeForPrompt(str) {\n  if (typeof str !== 'string') return '';\n  return str\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/\"/g, '\\\\\"')\n    .replace(/\\n/g, '\\\\n')\n    .replace(/\\r/g, '\\\\r');\n}\n\nconst draftLine = draft && (draft.date || draft.time || draft.attendee || draft.title || draft.duration || draft.location)\n  ? `Current meeting draft so far: ${JSON.stringify(draft)}. Only fill in fields the user is adding or changing in this turn; use null for anything not mentioned now.\\n\\n`\n  : '';\n\nconst prompt = `You are a meeting scheduling assistant. Extract meeting details from the user's speech.\nThe user is speaking in ${responseLanguage}. Respond in ${responseLanguage} for the raw_interpretation field, but keep all other fields (dates, times, emails) in their standard formats.\nAlways respond in this exact JSON format:\n\n{\n    \"title\": \"meeting title or null if not mentioned\",\n    \"date\": \"the date mentioned in format 'YYYY-MM-DD' or relative like 'tomorrow', 'today' (e.g., '2026-02-20', 'tomorrow', 'מחר') or null\",\n    \"time\": \"the time mentioned in 24-hour format or 12-hour with am/pm (e.g., '18:00', '6pm', '6:00 בערב') or null\",\n    \"duration\": \"duration in minutes as number (e.g., 30, 60) or null\",\n    \"attendee\": \"email address if mentioned (convert 'at' to '@', e.g., 'david at gmail.com' -> 'david@gmail.com'), or name if mentioned, or null if no attendees\",\n    \"location\": \"location if mentioned or null\",\n    \"raw_interpretation\": \"brief summary of what you understood in ${responseLanguage}\"\n}\n\nImportant rules:\n- If the user says \"חצי שעה\" or \"half hour\", duration is 30\n- If the user says \"שעה\" or \"hour\", duration is 60\n- Extract email addresses: if user says \"david at gmail.com\" or \"david@gmail.com\", convert to proper email format \"david@gmail.com\" (replace \"at\" with \"@\")\n- Emails are always in English/Latin characters - normalize them properly\n- For names without email, just capture the name\n- Attendees are optional - if user doesn't mention any, return null\n- \"מחר\" means \"tomorrow\", \"היום\" means \"today\"\n- For dates: Convert Hebrew dates to YYYY-MM-DD format (e.g., \"20 לפברואר 2026\" -> \"2026-02-20\")\n- For times: Convert Hebrew times to 24-hour format or include am/pm (e.g., \"6 בערב\" -> \"18:00\" or \"6pm\")\n- Keep raw_interpretation friendly and brief\n\n${draftLine}User said: \"${escapeForPrompt(text)}\"\n\nRespond ONLY with the JSON, no other text.`;\n\nreturn { prompt };"
+      },
+      "id": "build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response and extract JSON\nconst responseText = $input.first().json.candidates?.[0]?.content?.parts?.[0]?.text;\n\nif (!responseText) {\n  return { error: 'No response from AI' };\n}\n\n// Extract JSON from response\nconst jsonMatch = responseText.match(/\\{[\\s\\S]*\\}/);\nif (!jsonMatch) {\n  return { error: 'Invalid AI response format' };\n}\n\ntry {\n  const parsed = JSON.parse(jsonMatch[0]);\n  return parsed;\n} catch (e) {\n  return { error: 'Failed to parse AI response', details: e.message };\n}"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-parse",
+      "name": "Respond - Parse",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voicemeet-calendar",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-calendar",
+      "name": "Webhook - Calendar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 550],
+      "webhookId": "voicemeet-calendar"
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{ $json.body.start_iso }}",
+        "end": "={{ $json.body.end_iso }}",
+        "additionalFields": {
+          "summary": "={{ $json.body.title || 'VoiceMeet' }}",
+          "attendees": "={{ $json.body.attendee && $json.body.attendee.includes('@') ? [{ email: $json.body.attendee }] : [] }}",
+          "location": "={{ $json.body.location || '' }}",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [500, 550],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar",
+          "name": "Google Calendar"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, eventId: $json.id, htmlLink: $json.htmlLink, summary: $json.summary }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-calendar",
+      "name": "Respond - Calendar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [750, 550]
+    }
+  ],
+  "connections": {
+    "Webhook - Parse": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Respond - Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Calendar": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Respond - Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "1",
+  "triggerCount": 0,
+  "tags": []
+}
