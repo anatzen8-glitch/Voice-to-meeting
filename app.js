@@ -1,6 +1,11 @@
 // VoiceMeet - Phase 3 + Calendar (MVP)
 // Voice input + Gemini parsing + Google Calendar create
 
+// --- Backend: choose "vercel" (this repo on Vercel) or "n8n" (n8n webhooks) ---
+const BACKEND = 'vercel'; // 'vercel' | 'n8n'
+const N8N_PARSE_URL = 'https://YOUR-INSTANCE.app.n8n.cloud/webhook/voicemeet-parse';
+const N8N_CALENDAR_URL = 'https://YOUR-INSTANCE.app.n8n.cloud/webhook/voicemeet-calendar';
+
 const micButton = document.getElementById('mic-button');
 const status = document.getElementById('status');
 const conversation = document.getElementById('conversation');
@@ -156,7 +161,8 @@ if (SpeechRecognition) {
 // Parse text with Gemini API (optionally send current draft for context)
 async function parseWithGemini(text) {
     try {
-        const response = await fetch('/api/parse', {
+        const parseUrl = BACKEND === 'n8n' ? N8N_PARSE_URL : '/api/parse';
+        const response = await fetch(parseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -421,7 +427,7 @@ function draftToStartEnd() {
 
 // Create event on Google Calendar
 async function createCalendarEvent() {
-    if (!accessToken) {
+    if (BACKEND === 'vercel' && !accessToken) {
         addMessage(t('pleaseSignIn'), 'system');
         return;
     }
@@ -436,17 +442,14 @@ async function createCalendarEvent() {
     scheduleButton.disabled = true;
     status.textContent = currentLanguage === 'he' ? 'קובעים...' : 'Scheduling...';
     try {
-        const res = await fetch('/api/calendar-create', {
+        const calendarUrl = BACKEND === 'n8n' ? N8N_CALENDAR_URL : '/api/calendar-create';
+        const body = BACKEND === 'n8n'
+            ? { title: meetingDraft.title || 'VoiceMeet', start_iso: times.start_iso, end_iso: times.end_iso, attendee: meetingDraft.attendee || null, location: meetingDraft.location || null }
+            : { accessToken, title: meetingDraft.title || 'VoiceMeet', start_iso: times.start_iso, end_iso: times.end_iso, attendee: meetingDraft.attendee || null, location: meetingDraft.location || null };
+        const res = await fetch(calendarUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                accessToken,
-                title: meetingDraft.title || 'VoiceMeet',
-                start_iso: times.start_iso,
-                end_iso: times.end_iso,
-                attendee: meetingDraft.attendee || null,
-                location: meetingDraft.location || null
-            })
+            body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -473,8 +476,13 @@ async function createCalendarEvent() {
     }
 }
 
-// Initialize Google Sign-In when config and GSI are ready
+// Initialize Google Sign-In when config and GSI are ready (Vercel backend only; n8n uses its own OAuth)
 async function initGoogleSignIn() {
+    const signinWrap = document.getElementById('google-signin-wrap');
+    if (BACKEND === 'n8n') {
+        if (signinWrap) signinWrap.style.display = 'none';
+        return;
+    }
     try {
         const configRes = await fetch('/api/config');
         const config = await configRes.json();
